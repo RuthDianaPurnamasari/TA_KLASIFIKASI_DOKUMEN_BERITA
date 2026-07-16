@@ -1,0 +1,18 @@
+{
+    "generated_at": "2026-07-14T17:00:10",
+    "experiment_name": "cnn_k2",
+    "dataset": "Kompas",
+    "scenario_code": "K2",
+    "scenario_name": "Title + Description",
+    "explainer": "shap.GradientExplainer",
+    "explained_representation": "token embedding",
+    "aggregation_method": "Sum absolute SHAP values across embedding dimensions",
+    "max_sequence_length": 60,
+    "embedding_dimension": 128,
+    "background_size": 50,
+    "explain_size": 100,
+    "shap_nsamples": 100,
+    "random_seed": 42,
+    "processing_seconds": 9.548057,
+    "important_note": "Global importance is an approximate explanation computed on a stratified subset of the test set. Padding tokens are excluded."
+}

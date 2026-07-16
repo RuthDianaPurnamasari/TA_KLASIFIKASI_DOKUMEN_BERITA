@@ -1,0 +1,51 @@
+{
+    "separator": "[SEP]",
+    "kompas": {
+        "K1": {
+            "name": "Title",
+            "components": [
+                "title_preprocessed"
+            ]
+        },
+        "K2": {
+            "name": "Title + Description",
+            "components": [
+                "title_preprocessed",
+                "description_preprocessed"
+            ]
+        },
+        "K3": {
+            "name": "Title + Description + Keyword",
+            "components": [
+                "title_preprocessed",
+                "description_preprocessed",
+                "keyword_yake"
+            ],
+            "keyword_method": "YAKE"
+        },
+        "K4": {
+            "name": "Weighted News Representation",
+            "weights": {
+                "title": 3,
+                "keyword": 2,
+                "description": 1,
+                "content": 1
+            }
+        }
+    },
+    "ag_news": {
+        "A1": {
+            "name": "Title",
+            "components": [
+                "title_preprocessed"
+            ]
+        },
+        "A2": {
+            "name": "Title + Description",
+            "components": [
+                "title_preprocessed",
+                "description_preprocessed"
+            ]
+        }
+    }
+}

@@ -1,0 +1,161 @@
+﻿experiment_name,model,dataset,scenario_code,actual_index,actual_class,predicted_index,predicted_class,count
+attention_bilstm_a1,attention_bilstm,AG News,A1,0,business,0,business,1547
+attention_bilstm_a1,attention_bilstm,AG News,A1,0,business,1,sci_tech,181
+attention_bilstm_a1,attention_bilstm,AG News,A1,0,business,2,sports,63
+attention_bilstm_a1,attention_bilstm,AG News,A1,0,business,3,world,70
+attention_bilstm_a1,attention_bilstm,AG News,A1,1,sci_tech,0,business,183
+attention_bilstm_a1,attention_bilstm,AG News,A1,1,sci_tech,1,sci_tech,1543
+attention_bilstm_a1,attention_bilstm,AG News,A1,1,sci_tech,2,sports,61
+attention_bilstm_a1,attention_bilstm,AG News,A1,1,sci_tech,3,world,75
+attention_bilstm_a1,attention_bilstm,AG News,A1,2,sports,0,business,77
+attention_bilstm_a1,attention_bilstm,AG News,A1,2,sports,1,sci_tech,39
+attention_bilstm_a1,attention_bilstm,AG News,A1,2,sports,2,sports,1712
+attention_bilstm_a1,attention_bilstm,AG News,A1,2,sports,3,world,46
+attention_bilstm_a1,attention_bilstm,AG News,A1,3,world,0,business,125
+attention_bilstm_a1,attention_bilstm,AG News,A1,3,world,1,sci_tech,70
+attention_bilstm_a1,attention_bilstm,AG News,A1,3,world,2,sports,88
+attention_bilstm_a1,attention_bilstm,AG News,A1,3,world,3,world,1584
+cnn_a1,cnn,AG News,A1,0,business,0,business,1485
+cnn_a1,cnn,AG News,A1,0,business,1,sci_tech,198
+cnn_a1,cnn,AG News,A1,0,business,2,sports,84
+cnn_a1,cnn,AG News,A1,0,business,3,world,94
+cnn_a1,cnn,AG News,A1,1,sci_tech,0,business,129
+cnn_a1,cnn,AG News,A1,1,sci_tech,1,sci_tech,1608
+cnn_a1,cnn,AG News,A1,1,sci_tech,2,sports,56
+cnn_a1,cnn,AG News,A1,1,sci_tech,3,world,69
+cnn_a1,cnn,AG News,A1,2,sports,0,business,38
+cnn_a1,cnn,AG News,A1,2,sports,1,sci_tech,36
+cnn_a1,cnn,AG News,A1,2,sports,2,sports,1757
+cnn_a1,cnn,AG News,A1,2,sports,3,world,43
+cnn_a1,cnn,AG News,A1,3,world,0,business,81
+cnn_a1,cnn,AG News,A1,3,world,1,sci_tech,91
+cnn_a1,cnn,AG News,A1,3,world,2,sports,102
+cnn_a1,cnn,AG News,A1,3,world,3,world,1593
+attention_bilstm_a2,attention_bilstm,AG News,A2,0,business,0,business,1603
+attention_bilstm_a2,attention_bilstm,AG News,A2,0,business,1,sci_tech,167
+attention_bilstm_a2,attention_bilstm,AG News,A2,0,business,2,sports,37
+attention_bilstm_a2,attention_bilstm,AG News,A2,0,business,3,world,54
+attention_bilstm_a2,attention_bilstm,AG News,A2,1,sci_tech,0,business,148
+attention_bilstm_a2,attention_bilstm,AG News,A2,1,sci_tech,1,sci_tech,1621
+attention_bilstm_a2,attention_bilstm,AG News,A2,1,sci_tech,2,sports,37
+attention_bilstm_a2,attention_bilstm,AG News,A2,1,sci_tech,3,world,56
+attention_bilstm_a2,attention_bilstm,AG News,A2,2,sports,0,business,46
+attention_bilstm_a2,attention_bilstm,AG News,A2,2,sports,1,sci_tech,16
+attention_bilstm_a2,attention_bilstm,AG News,A2,2,sports,2,sports,1782
+attention_bilstm_a2,attention_bilstm,AG News,A2,2,sports,3,world,30
+attention_bilstm_a2,attention_bilstm,AG News,A2,3,world,0,business,114
+attention_bilstm_a2,attention_bilstm,AG News,A2,3,world,1,sci_tech,61
+attention_bilstm_a2,attention_bilstm,AG News,A2,3,world,2,sports,81
+attention_bilstm_a2,attention_bilstm,AG News,A2,3,world,3,world,1611
+cnn_a2,cnn,AG News,A2,0,business,0,business,1611
+cnn_a2,cnn,AG News,A2,0,business,1,sci_tech,144
+cnn_a2,cnn,AG News,A2,0,business,2,sports,25
+cnn_a2,cnn,AG News,A2,0,business,3,world,81
+cnn_a2,cnn,AG News,A2,1,sci_tech,0,business,156
+cnn_a2,cnn,AG News,A2,1,sci_tech,1,sci_tech,1619
+cnn_a2,cnn,AG News,A2,1,sci_tech,2,sports,17
+cnn_a2,cnn,AG News,A2,1,sci_tech,3,world,70
+cnn_a2,cnn,AG News,A2,2,sports,0,business,38
+cnn_a2,cnn,AG News,A2,2,sports,1,sci_tech,17
+cnn_a2,cnn,AG News,A2,2,sports,2,sports,1762
+cnn_a2,cnn,AG News,A2,2,sports,3,world,57
+cnn_a2,cnn,AG News,A2,3,world,0,business,103
+cnn_a2,cnn,AG News,A2,3,world,1,sci_tech,68
+cnn_a2,cnn,AG News,A2,3,world,2,sports,63
+cnn_a2,cnn,AG News,A2,3,world,3,world,1633
+attention_bilstm_k1,attention_bilstm,Kompas,K1,0,bola,0,bola,247
+attention_bilstm_k1,attention_bilstm,Kompas,K1,0,bola,1,global,2
+attention_bilstm_k1,attention_bilstm,Kompas,K1,0,bola,2,money,1
+attention_bilstm_k1,attention_bilstm,Kompas,K1,0,bola,3,tekno,0
+attention_bilstm_k1,attention_bilstm,Kompas,K1,1,global,0,bola,3
+attention_bilstm_k1,attention_bilstm,Kompas,K1,1,global,1,global,233
+attention_bilstm_k1,attention_bilstm,Kompas,K1,1,global,2,money,8
+attention_bilstm_k1,attention_bilstm,Kompas,K1,1,global,3,tekno,6
+attention_bilstm_k1,attention_bilstm,Kompas,K1,2,money,0,bola,4
+attention_bilstm_k1,attention_bilstm,Kompas,K1,2,money,1,global,7
+attention_bilstm_k1,attention_bilstm,Kompas,K1,2,money,2,money,234
+attention_bilstm_k1,attention_bilstm,Kompas,K1,2,money,3,tekno,5
+attention_bilstm_k1,attention_bilstm,Kompas,K1,3,tekno,0,bola,0
+attention_bilstm_k1,attention_bilstm,Kompas,K1,3,tekno,1,global,9
+attention_bilstm_k1,attention_bilstm,Kompas,K1,3,tekno,2,money,18
+attention_bilstm_k1,attention_bilstm,Kompas,K1,3,tekno,3,tekno,223
+cnn_k1,cnn,Kompas,K1,0,bola,0,bola,243
+cnn_k1,cnn,Kompas,K1,0,bola,1,global,2
+cnn_k1,cnn,Kompas,K1,0,bola,2,money,4
+cnn_k1,cnn,Kompas,K1,0,bola,3,tekno,1
+cnn_k1,cnn,Kompas,K1,1,global,0,bola,2
+cnn_k1,cnn,Kompas,K1,1,global,1,global,233
+cnn_k1,cnn,Kompas,K1,1,global,2,money,7
+cnn_k1,cnn,Kompas,K1,1,global,3,tekno,8
+cnn_k1,cnn,Kompas,K1,2,money,0,bola,0
+cnn_k1,cnn,Kompas,K1,2,money,1,global,7
+cnn_k1,cnn,Kompas,K1,2,money,2,money,236
+cnn_k1,cnn,Kompas,K1,2,money,3,tekno,7
+cnn_k1,cnn,Kompas,K1,3,tekno,0,bola,0
+cnn_k1,cnn,Kompas,K1,3,tekno,1,global,8
+cnn_k1,cnn,Kompas,K1,3,tekno,2,money,7
+cnn_k1,cnn,Kompas,K1,3,tekno,3,tekno,235
+attention_bilstm_k2,attention_bilstm,Kompas,K2,0,bola,0,bola,246
+attention_bilstm_k2,attention_bilstm,Kompas,K2,0,bola,1,global,3
+attention_bilstm_k2,attention_bilstm,Kompas,K2,0,bola,2,money,1
+attention_bilstm_k2,attention_bilstm,Kompas,K2,0,bola,3,tekno,0
+attention_bilstm_k2,attention_bilstm,Kompas,K2,1,global,0,bola,1
+attention_bilstm_k2,attention_bilstm,Kompas,K2,1,global,1,global,240
+attention_bilstm_k2,attention_bilstm,Kompas,K2,1,global,2,money,6
+attention_bilstm_k2,attention_bilstm,Kompas,K2,1,global,3,tekno,3
+attention_bilstm_k2,attention_bilstm,Kompas,K2,2,money,0,bola,1
+attention_bilstm_k2,attention_bilstm,Kompas,K2,2,money,1,global,10
+attention_bilstm_k2,attention_bilstm,Kompas,K2,2,money,2,money,233
+attention_bilstm_k2,attention_bilstm,Kompas,K2,2,money,3,tekno,6
+attention_bilstm_k2,attention_bilstm,Kompas,K2,3,tekno,0,bola,0
+attention_bilstm_k2,attention_bilstm,Kompas,K2,3,tekno,1,global,11
+attention_bilstm_k2,attention_bilstm,Kompas,K2,3,tekno,2,money,5
+attention_bilstm_k2,attention_bilstm,Kompas,K2,3,tekno,3,tekno,234
+cnn_k2,cnn,Kompas,K2,0,bola,0,bola,245
+cnn_k2,cnn,Kompas,K2,0,bola,1,global,2
+cnn_k2,cnn,Kompas,K2,0,bola,2,money,2
+cnn_k2,cnn,Kompas,K2,0,bola,3,tekno,1
+cnn_k2,cnn,Kompas,K2,1,global,0,bola,1
+cnn_k2,cnn,Kompas,K2,1,global,1,global,239
+cnn_k2,cnn,Kompas,K2,1,global,2,money,5
+cnn_k2,cnn,Kompas,K2,1,global,3,tekno,5
+cnn_k2,cnn,Kompas,K2,2,money,0,bola,0
+cnn_k2,cnn,Kompas,K2,2,money,1,global,8
+cnn_k2,cnn,Kompas,K2,2,money,2,money,234
+cnn_k2,cnn,Kompas,K2,2,money,3,tekno,8
+cnn_k2,cnn,Kompas,K2,3,tekno,0,bola,0
+cnn_k2,cnn,Kompas,K2,3,tekno,1,global,6
+cnn_k2,cnn,Kompas,K2,3,tekno,2,money,4
+cnn_k2,cnn,Kompas,K2,3,tekno,3,tekno,240
+attention_bilstm_k3,attention_bilstm,Kompas,K3,0,bola,0,bola,247
+attention_bilstm_k3,attention_bilstm,Kompas,K3,0,bola,1,global,3
+attention_bilstm_k3,attention_bilstm,Kompas,K3,0,bola,2,money,0
+attention_bilstm_k3,attention_bilstm,Kompas,K3,0,bola,3,tekno,0
+attention_bilstm_k3,attention_bilstm,Kompas,K3,1,global,0,bola,1
+attention_bilstm_k3,attention_bilstm,Kompas,K3,1,global,1,global,234
+attention_bilstm_k3,attention_bilstm,Kompas,K3,1,global,2,money,6
+attention_bilstm_k3,attention_bilstm,Kompas,K3,1,global,3,tekno,9
+attention_bilstm_k3,attention_bilstm,Kompas,K3,2,money,0,bola,0
+attention_bilstm_k3,attention_bilstm,Kompas,K3,2,money,1,global,6
+attention_bilstm_k3,attention_bilstm,Kompas,K3,2,money,2,money,238
+attention_bilstm_k3,attention_bilstm,Kompas,K3,2,money,3,tekno,6
+attention_bilstm_k3,attention_bilstm,Kompas,K3,3,tekno,0,bola,0
+attention_bilstm_k3,attention_bilstm,Kompas,K3,3,tekno,1,global,9
+attention_bilstm_k3,attention_bilstm,Kompas,K3,3,tekno,2,money,8
+attention_bilstm_k3,attention_bilstm,Kompas,K3,3,tekno,3,tekno,233
+cnn_k3,cnn,Kompas,K3,0,bola,0,bola,245
+cnn_k3,cnn,Kompas,K3,0,bola,1,global,3
+cnn_k3,cnn,Kompas,K3,0,bola,2,money,1
+cnn_k3,cnn,Kompas,K3,0,bola,3,tekno,1
+cnn_k3,cnn,Kompas,K3,1,global,0,bola,2
+cnn_k3,cnn,Kompas,K3,1,global,1,global,237
+cnn_k3,cnn,Kompas,K3,1,global,2,money,7
+cnn_k3,cnn,Kompas,K3,1,global,3,tekno,4
+cnn_k3,cnn,Kompas,K3,2,money,0,bola,0
+cnn_k3,cnn,Kompas,K3,2,money,1,global,9
+cnn_k3,cnn,Kompas,K3,2,money,2,money,233
+cnn_k3,cnn,Kompas,K3,2,money,3,tekno,8
+cnn_k3,cnn,Kompas,K3,3,tekno,0,bola,1
+cnn_k3,cnn,Kompas,K3,3,tekno,1,global,5
+cnn_k3,cnn,Kompas,K3,3,tekno,2,money,9
+cnn_k3,cnn,Kompas,K3,3,tekno,3,tekno,235

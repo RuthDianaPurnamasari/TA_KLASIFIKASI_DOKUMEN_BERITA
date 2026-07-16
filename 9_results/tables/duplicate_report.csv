@@ -1,0 +1,4 @@
+﻿dataset,jumlah_data,duplikat_artikel_exact,duplikat_title_normalized,duplikat_content_normalized,duplikat_link_normalized,judul_muncul_lintas_kategori,duplikat_artikel_normalized
+kompas,10000,0,0,3.0,0.0,0,
+ag_news_train,120000,64,6369,,,653,129.0
+ag_news_test,7532,61,120,,,18,62.0

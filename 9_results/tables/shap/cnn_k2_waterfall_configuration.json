@@ -1,0 +1,20 @@
+{
+    "model": "cnn_k2",
+    "dataset": "Kompas",
+    "scenario_code": "K2",
+    "scenario_name": "Title + Description",
+    "source_summary": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\tables\\shap\\local\\cnn_k2_local_shap_summary.csv",
+    "source_token_contributions": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\tables\\shap\\local\\cnn_k2_local_token_contributions.csv",
+    "top_n_tokens_per_plot": 15,
+    "number_of_samples": 8,
+    "successful_plots": 8,
+    "failed_plots": 0,
+    "special_tokens_excluded": [
+        "",
+        "[OOV]",
+        "[PAD]",
+        "[SEP]",
+        "[UNK]"
+    ],
+    "visualization_note": "This is a waterfall-style local SHAP visualization built from signed token-level SHAP contributions. Positive values support the predicted class and negative values reduce the predicted class score."
+}

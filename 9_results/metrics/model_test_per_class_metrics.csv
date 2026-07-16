@@ -1,0 +1,41 @@
+﻿experiment_name,model,dataset,scenario_code,scenario_name,class_index,class_name,precision,recall,f1_score,support
+attention_bilstm_a1,attention_bilstm,AG News,A1,Title,0,business,0.8007246376811594,0.831273508866201,0.8157131558133404,1861
+attention_bilstm_a1,attention_bilstm,AG News,A1,Title,1,sci_tech,0.8417894162575014,0.8286788399570354,0.8351826792963464,1862
+attention_bilstm_a1,attention_bilstm,AG News,A1,Title,2,sports,0.8898128898128899,0.9135538954108858,0.9015271195365983,1874
+attention_bilstm_a1,attention_bilstm,AG News,A1,Title,3,world,0.8923943661971832,0.8484199250133905,0.8698517298187809,1867
+cnn_a1,cnn,AG News,A1,Title,0,business,0.8568955568378535,0.7979580870499732,0.8263772954924875,1861
+cnn_a1,cnn,AG News,A1,Title,1,sci_tech,0.8318675633729954,0.8635875402792696,0.8474308300395257,1862
+cnn_a1,cnn,AG News,A1,Title,2,sports,0.8789394697348675,0.9375667022411953,0.9073069971598244,1874
+cnn_a1,cnn,AG News,A1,Title,3,world,0.8854919399666481,0.8532404927691484,0.8690671031096563,1867
+attention_bilstm_a2,attention_bilstm,AG News,A2,Title + Description,0,business,0.8388278388278388,0.8613648576034391,0.8499469777306469,1861
+attention_bilstm_a2,attention_bilstm,AG News,A2,Title + Description,1,sci_tech,0.8691689008042895,0.8705692803437164,0.8698685269653877,1862
+attention_bilstm_a2,attention_bilstm,AG News,A2,Title + Description,2,sports,0.9199793495095508,0.9509071504802561,0.9351876147992653,1874
+attention_bilstm_a2,attention_bilstm,AG News,A2,Title + Description,3,world,0.9200456881781839,0.8628816282806642,0.8905472636815921,1867
+cnn_a2,cnn,AG News,A2,Title + Description,0,business,0.8443396226415094,0.8656636217087588,0.8548686654284956,1861
+cnn_a2,cnn,AG News,A2,Title + Description,1,sci_tech,0.8760822510822511,0.8694951664876477,0.8727762803234501,1862
+cnn_a2,cnn,AG News,A2,Title + Description,2,sports,0.9437600428494911,0.9402347918890075,0.9419941192194601,1874
+cnn_a2,cnn,AG News,A2,Title + Description,3,world,0.8870179250407387,0.8746652383502946,0.8807982740021575,1867
+attention_bilstm_k1,attention_bilstm,Kompas,K1,Title,0,bola,0.9724409448818898,0.988,0.9801587301587301,250
+attention_bilstm_k1,attention_bilstm,Kompas,K1,Title,1,global,0.9282868525896414,0.932,0.9301397205588823,250
+attention_bilstm_k1,attention_bilstm,Kompas,K1,Title,2,money,0.896551724137931,0.936,0.9158512720156555,250
+attention_bilstm_k1,attention_bilstm,Kompas,K1,Title,3,tekno,0.9529914529914529,0.892,0.9214876033057852,250
+cnn_k1,cnn,Kompas,K1,Title,0,bola,0.9918367346938776,0.972,0.9818181818181818,250
+cnn_k1,cnn,Kompas,K1,Title,1,global,0.932,0.932,0.932,250
+cnn_k1,cnn,Kompas,K1,Title,2,money,0.9291338582677166,0.944,0.9365079365079365,250
+cnn_k1,cnn,Kompas,K1,Title,3,tekno,0.9362549800796812,0.94,0.93812375249501,250
+attention_bilstm_k2,attention_bilstm,Kompas,K2,Title + Description,0,bola,0.9919354838709677,0.984,0.9879518072289156,250
+attention_bilstm_k2,attention_bilstm,Kompas,K2,Title + Description,1,global,0.9090909090909091,0.96,0.933852140077821,250
+attention_bilstm_k2,attention_bilstm,Kompas,K2,Title + Description,2,money,0.9510204081632653,0.932,0.9414141414141414,250
+attention_bilstm_k2,attention_bilstm,Kompas,K2,Title + Description,3,tekno,0.9629629629629629,0.936,0.949290060851927,250
+cnn_k2,cnn,Kompas,K2,Title + Description,0,bola,0.9959349593495935,0.98,0.9879032258064516,250
+cnn_k2,cnn,Kompas,K2,Title + Description,1,global,0.9372549019607843,0.956,0.9465346534653465,250
+cnn_k2,cnn,Kompas,K2,Title + Description,2,money,0.9551020408163265,0.936,0.9454545454545454,250
+cnn_k2,cnn,Kompas,K2,Title + Description,3,tekno,0.9448818897637795,0.96,0.9523809523809523,250
+attention_bilstm_k3,attention_bilstm,Kompas,K3,Title + Description + Keyword,0,bola,0.9959677419354839,0.988,0.9919678714859438,250
+attention_bilstm_k3,attention_bilstm,Kompas,K3,Title + Description + Keyword,1,global,0.9285714285714286,0.936,0.9322709163346613,250
+attention_bilstm_k3,attention_bilstm,Kompas,K3,Title + Description + Keyword,2,money,0.9444444444444444,0.952,0.9482071713147411,250
+attention_bilstm_k3,attention_bilstm,Kompas,K3,Title + Description + Keyword,3,tekno,0.9395161290322581,0.932,0.9357429718875502,250
+cnn_k3,cnn,Kompas,K3,Title + Description + Keyword,0,bola,0.9879032258064516,0.98,0.9839357429718876,250
+cnn_k3,cnn,Kompas,K3,Title + Description + Keyword,1,global,0.9330708661417323,0.948,0.9404761904761905,250
+cnn_k3,cnn,Kompas,K3,Title + Description + Keyword,2,money,0.932,0.932,0.932,250
+cnn_k3,cnn,Kompas,K3,Title + Description + Keyword,3,tekno,0.9475806451612904,0.94,0.9437751004016064,250

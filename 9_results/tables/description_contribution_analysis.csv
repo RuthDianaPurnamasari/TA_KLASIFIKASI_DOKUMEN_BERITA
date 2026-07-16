@@ -1,0 +1,5 @@
+﻿dataset,model,comparison,baseline_scenario,treatment_scenario,baseline_accuracy,treatment_accuracy,accuracy_change,accuracy_change_percentage_point,baseline_f1_macro,treatment_f1_macro,f1_change,incorrect_before,incorrect_after,error_reduction,interpretation
+Kompas,CNN,Title vs Title + Description,K1,K2,0.947,0.958,0.01100000000000001,1.100000000000001,0.947112467705282,0.958068344276824,0.010955876571541956,53,42,11,Description meningkatkan performa.
+Kompas,Attention-BiLSTM,Title vs Title + Description,K1,K2,0.937,0.953,0.015999999999999903,1.5999999999999903,0.9369093315097632,0.9531270373932011,0.01621770588343796,63,47,16,Description meningkatkan performa.
+AG News,CNN,Title vs Title + Description,A1,A2,0.8632100750267953,0.887593783494105,0.02438370846730975,2.438370846730975,0.8625455564503735,0.8876093347433909,0.025063778293017425,1021,839,182,Description meningkatkan performa.
+AG News,Attention-BiLSTM,Title vs Title + Description,A1,A2,0.8555734190782422,0.8865219721329046,0.030948553054662375,3.0948553054662375,0.8555686711162664,0.8863875957942229,0.03081892467795644,1078,847,231,Description meningkatkan performa.

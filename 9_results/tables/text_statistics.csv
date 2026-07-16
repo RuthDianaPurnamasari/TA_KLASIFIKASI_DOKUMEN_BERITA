@@ -1,0 +1,15 @@
+﻿dataset,text_field,unit,jumlah_data,minimum,maksimum,mean,median,std,q1,q3,jumlah_kosong
+kompas,title,word_count,10000,2,20,10.71,11.0,2.0,9.0,12.0,0
+kompas,title,char_count,10000,10,117,68.33,68.0,10.96,62.0,75.0,0
+kompas,description,word_count,10000,7,40,17.87,18.0,3.15,16.0,20.0,0
+kompas,description,char_count,10000,54,286,124.83,127.0,19.64,112.0,139.0,0
+kompas,content,word_count,10000,41,1963,330.39,325.0,92.97,282.0,374.0,0
+kompas,content,char_count,10000,284,14639,2379.47,2343.0,681.64,2029.0,2698.0,0
+ag_news_train,title,word_count,120000,1,19,6.78,7.0,2.09,5.0,8.0,0
+ag_news_train,title,char_count,120000,6,115,42.04,41.0,13.55,33.0,49.0,0
+ag_news_train,description,word_count,120000,1,173,31.06,30.0,9.76,25.0,36.0,0
+ag_news_train,description,char_count,120000,6,974,192.85,188.0,63.99,154.0,218.0,0
+ag_news_test,title,word_count,7532,1,17,6.36,6.0,2.21,5.0,8.0,0
+ag_news_test,title,char_count,7532,3,94,38.79,39.0,13.49,31.0,47.0,0
+ag_news_test,description,word_count,7532,0,129,23.54,25.0,14.58,14.0,33.0,831
+ag_news_test,description,char_count,7532,0,818,143.57,156.0,89.34,84.0,202.0,831

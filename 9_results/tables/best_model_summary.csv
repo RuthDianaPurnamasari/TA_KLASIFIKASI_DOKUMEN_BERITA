@@ -1,0 +1,3 @@
+﻿dataset,best_accuracy_experiment,best_accuracy_model,best_accuracy_scenario,best_accuracy,best_f1_experiment,best_f1_model,best_f1_scenario,best_f1_macro,fastest_experiment,fastest_model,fastest_scenario,fastest_inference_ms_per_sample
+AG News,cnn_a2,CNN,A2,0.887593783494105,cnn_a2,CNN,A2,0.8876093347433909,cnn_a2,CNN,A2,0.16881
+Kompas,cnn_k2,CNN,K2,0.958,cnn_k2,CNN,K2,0.958068344276824,cnn_k3,CNN,K3,0.456074

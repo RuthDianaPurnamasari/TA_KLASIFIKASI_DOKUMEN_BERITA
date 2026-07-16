@@ -1,0 +1,19 @@
+{
+    "experiment_name": "cnn_k2",
+    "dataset": "Kompas",
+    "scenario_code": "K2",
+    "scenario_name": "Title + Description",
+    "source_shap_values": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\shap_values\\cnn_k2_global_shap_values.npz",
+    "selection_strategy": "One highest-confidence correct prediction per class and one highest-confidence incorrect prediction per actual class when available.",
+    "maximum_local_samples": 8,
+    "selected_sample_count": 8,
+    "top_n_tokens_per_plot": 15,
+    "aggregation_method": "Signed sum across embedding dimensions for direction, and sum of absolute SHAP values across embedding dimensions for importance.",
+    "special_tokens_excluded": [
+        "[OOV]",
+        "[PAD]",
+        "[SEP]",
+        "[UNK]"
+    ],
+    "interpretation_note": "Positive signed SHAP values support the predicted class. Negative values reduce the predicted class score. Because SHAP is calculated at the embedding level, token contributions are approximate aggregated attributions."
+}

@@ -1,0 +1,7 @@
+﻿dataset,scenario_code,scenario_name,basis,raw_p95,rounded_p95,practical_cap,recommended_max_length,estimated_coverage,note,jumlah_train_terpotong,persentase_train_terpotong
+Kompas,K1,Title,P95 data train,14.0,20,50,20,100.0,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,0,0.0
+Kompas,K2,Title + Description,P95 data train,37.0,40,100,40,98.72,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,102,1.28
+Kompas,K3,Title + Description + Keyword,P95 data train,53.0,60,150,60,99.77,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,18,0.23
+Kompas,K4,Title + Description + Keyword + Content,P95 data train,519.0,525,600,525,95.49,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,361,4.51
+AG News,A1,Title,P95 data train,11.0,20,50,20,100.0,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,0,0.0
+AG News,A2,Title + Description,P95 data train,55.0,60,200,60,97.16,Rekomendasi awal. Coverage aktual dihitung kembali setelah tokenizer difit pada data train.,3069,2.84

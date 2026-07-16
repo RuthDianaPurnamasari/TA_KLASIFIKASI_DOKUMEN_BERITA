@@ -1,0 +1,13 @@
+{
+    "algorithm": "YAKE",
+    "language": "id",
+    "source_text": "title_preprocessed + description_preprocessed",
+    "max_ngram_size": 3,
+    "deduplication_limit": 0.9,
+    "deduplication_function": "seqm",
+    "window_size": 1,
+    "top_keywords": 5,
+    "keyword_separator": " | ",
+    "content_used": false,
+    "random_seed": 42
+}

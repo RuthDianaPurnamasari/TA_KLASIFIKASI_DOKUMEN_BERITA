@@ -1,0 +1,19 @@
+﻿dataset,scenario_code,scenario_name,split,jumlah_data,max_sequence_length,vocabulary_size,mean_non_padding_tokens,median_non_padding_tokens,maximum_non_padding_tokens,padding_percentage,output_path
+Kompas,K1,Title,train,7997,20,10234,10.99,11.0,20,45.06,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k1\train.npz
+Kompas,K1,Title,validation,1000,20,10234,10.91,11.0,18,45.45,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k1\validation.npz
+Kompas,K1,Title,test,1000,20,10234,11.0,11.0,18,45.0,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k1\test.npz
+Kompas,K2,Title + Description,train,7997,60,15446,30.34,30.0,52,49.43,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k2\train.npz
+Kompas,K2,Title + Description,validation,1000,60,15446,30.16,30.0,45,49.73,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k2\validation.npz
+Kompas,K2,Title + Description,test,1000,60,15446,30.52,30.0,47,49.13,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k2\test.npz
+Kompas,K3,Title + Description + Keyword,train,7997,60,15447,46.12,46.0,60,23.13,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k3\train.npz
+Kompas,K3,Title + Description + Keyword,validation,1000,60,15447,45.94,46.0,60,23.43,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k3\validation.npz
+Kompas,K3,Title + Description + Keyword,test,1000,60,15447,46.28,46.0,60,22.86,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k3\test.npz
+Kompas,K4,Title + Description + Keyword + Content,train,7997,525,49333,380.34,379.0,525,27.56,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k4\train.npz
+Kompas,K4,Title + Description + Keyword + Content,validation,1000,525,49333,378.89,376.0,525,27.83,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k4\validation.npz
+Kompas,K4,Title + Description + Keyword + Content,test,1000,525,49333,381.88,380.0,525,27.26,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\kompas_k4\test.npz
+AG News,A1,Title,train,107883,20,33320,7.01,7.0,19,64.95,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a1\train.npz
+AG News,A1,Title,validation,11988,20,33320,7.03,7.0,18,64.87,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a1\validation.npz
+AG News,A1,Title,test,7464,20,33320,6.53,6.0,17,67.35,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a1\test.npz
+AG News,A2,Title + Description,train,107883,60,64868,39.39,39.0,60,34.36,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a2\train.npz
+AG News,A2,Title + Description,validation,11988,60,64868,39.54,39.0,60,34.1,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a2\validation.npz
+AG News,A2,Title + Description,test,7464,60,64868,31.1,34.0,60,48.17,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\vectorized\agnews_a2\test.npz

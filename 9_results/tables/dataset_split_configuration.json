@@ -1,0 +1,20 @@
+{
+    "random_seed": 42,
+    "stratified_split": true,
+    "split_key": "document_id",
+    "kompas": {
+        "train": 0.8,
+        "validation": 0.1,
+        "test": 0.1
+    },
+    "ag_news": {
+        "original_train": {
+            "train": 0.9,
+            "validation": 0.1
+        },
+        "official_test": {
+            "test": 1.0
+        }
+    },
+    "important_note": "Split assignment yang sama digunakan untuk seluruh skenario dalam dataset yang sama."
+}

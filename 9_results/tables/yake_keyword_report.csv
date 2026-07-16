@@ -1,0 +1,6 @@
+﻿dataset,category,jumlah_data,avg_keyword_count,minimum_keyword_count,maximum_keyword_count,artikel_tanpa_keyword,processing_time_seconds,average_seconds_per_article
+Kompas,bola,2500,5.0,5,5,0,,
+Kompas,global,2500,5.0,5,5,0,,
+Kompas,money,2500,5.0,5,5,0,,
+Kompas,tekno,2497,5.0,5,5,0,,
+Kompas,ALL,9997,5.0,5,5,0,24.88,0.002489

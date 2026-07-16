@@ -1,0 +1,50 @@
+{
+    "analysis_split": "train",
+    "length_measurement": "Whitespace-based temporary token count",
+    "selection_basis": "P95 data train",
+    "important_note": "Nilai akan diverifikasi kembali menggunakan tokenizer yang difit hanya pada data train.",
+    "recommendations": {
+        "K1": {
+            "dataset": "Kompas",
+            "scenario_name": "Title",
+            "recommended_max_length": 20,
+            "estimated_train_coverage": 100.0,
+            "train_truncation_percentage": 0.0
+        },
+        "K2": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description",
+            "recommended_max_length": 40,
+            "estimated_train_coverage": 98.72,
+            "train_truncation_percentage": 1.28
+        },
+        "K3": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description + Keyword",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 99.77,
+            "train_truncation_percentage": 0.23
+        },
+        "K4": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description + Keyword + Content",
+            "recommended_max_length": 525,
+            "estimated_train_coverage": 95.49,
+            "train_truncation_percentage": 4.51
+        },
+        "A1": {
+            "dataset": "AG News",
+            "scenario_name": "Title",
+            "recommended_max_length": 20,
+            "estimated_train_coverage": 100.0,
+            "train_truncation_percentage": 0.0
+        },
+        "A2": {
+            "dataset": "AG News",
+            "scenario_name": "Title + Description",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 97.16,
+            "train_truncation_percentage": 2.84
+        }
+    }
+}

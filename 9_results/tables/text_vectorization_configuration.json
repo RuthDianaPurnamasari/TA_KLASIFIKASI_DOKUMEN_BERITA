@@ -1,0 +1,30 @@
+{
+    "framework": "TensorFlow/Keras",
+    "vectorizer": "TextVectorization",
+    "adapt_policy": "Vocabulary dibentuk hanya dari data train pada masing-masing skenario.",
+    "standardize": null,
+    "split": "whitespace",
+    "output_mode": "int",
+    "batch_size": 1024,
+    "random_seed": 42,
+    "max_sequence_lengths": {
+        "K1": 20,
+        "K2": 60,
+        "K3": 60,
+        "K4": 525,
+        "A1": 20,
+        "A2": 60
+    },
+    "max_vocabulary_sizes": {
+        "K1": 30000,
+        "K2": 40000,
+        "K3": 50000,
+        "K4": 80000,
+        "A1": 50000,
+        "A2": 80000
+    },
+    "special_indices": {
+        "padding": 0,
+        "oov": 1
+    }
+}

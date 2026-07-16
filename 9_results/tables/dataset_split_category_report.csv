@@ -1,0 +1,73 @@
+﻿dataset,scenario_code,split,category,jumlah_data,persentase_dalam_split
+Kompas,K1,test,bola,250,25.0
+Kompas,K1,test,global,250,25.0
+Kompas,K1,test,money,250,25.0
+Kompas,K1,test,tekno,250,25.0
+Kompas,K1,train,bola,2000,25.01
+Kompas,K1,train,global,2000,25.01
+Kompas,K1,train,money,2000,25.01
+Kompas,K1,train,tekno,1997,24.97
+Kompas,K1,validation,bola,250,25.0
+Kompas,K1,validation,global,250,25.0
+Kompas,K1,validation,money,250,25.0
+Kompas,K1,validation,tekno,250,25.0
+Kompas,K2,test,bola,250,25.0
+Kompas,K2,test,global,250,25.0
+Kompas,K2,test,money,250,25.0
+Kompas,K2,test,tekno,250,25.0
+Kompas,K2,train,bola,2000,25.01
+Kompas,K2,train,global,2000,25.01
+Kompas,K2,train,money,2000,25.01
+Kompas,K2,train,tekno,1997,24.97
+Kompas,K2,validation,bola,250,25.0
+Kompas,K2,validation,global,250,25.0
+Kompas,K2,validation,money,250,25.0
+Kompas,K2,validation,tekno,250,25.0
+Kompas,K3,test,bola,250,25.0
+Kompas,K3,test,global,250,25.0
+Kompas,K3,test,money,250,25.0
+Kompas,K3,test,tekno,250,25.0
+Kompas,K3,train,bola,2000,25.01
+Kompas,K3,train,global,2000,25.01
+Kompas,K3,train,money,2000,25.01
+Kompas,K3,train,tekno,1997,24.97
+Kompas,K3,validation,bola,250,25.0
+Kompas,K3,validation,global,250,25.0
+Kompas,K3,validation,money,250,25.0
+Kompas,K3,validation,tekno,250,25.0
+Kompas,K4,test,bola,250,25.0
+Kompas,K4,test,global,250,25.0
+Kompas,K4,test,money,250,25.0
+Kompas,K4,test,tekno,250,25.0
+Kompas,K4,train,bola,2000,25.01
+Kompas,K4,train,global,2000,25.01
+Kompas,K4,train,money,2000,25.01
+Kompas,K4,train,tekno,1997,24.97
+Kompas,K4,validation,bola,250,25.0
+Kompas,K4,validation,global,250,25.0
+Kompas,K4,validation,money,250,25.0
+Kompas,K4,validation,tekno,250,25.0
+AG News Train,A1,train,business,26973,25.0
+AG News Train,A1,train,sci_tech,26944,24.98
+AG News Train,A1,train,sports,26979,25.01
+AG News Train,A1,train,world,26987,25.02
+AG News Train,A1,validation,business,2997,25.0
+AG News Train,A1,validation,sci_tech,2994,24.97
+AG News Train,A1,validation,sports,2998,25.01
+AG News Train,A1,validation,world,2999,25.02
+AG News Train,A2,train,business,26973,25.0
+AG News Train,A2,train,sci_tech,26944,24.98
+AG News Train,A2,train,sports,26979,25.01
+AG News Train,A2,train,world,26987,25.02
+AG News Train,A2,validation,business,2997,25.0
+AG News Train,A2,validation,sci_tech,2994,24.97
+AG News Train,A2,validation,sports,2998,25.01
+AG News Train,A2,validation,world,2999,25.02
+AG News Test,A1,test,business,1861,24.93
+AG News Test,A1,test,sci_tech,1862,24.95
+AG News Test,A1,test,sports,1874,25.11
+AG News Test,A1,test,world,1867,25.01
+AG News Test,A2,test,business,1861,24.93
+AG News Test,A2,test,sci_tech,1862,24.95
+AG News Test,A2,test,sports,1874,25.11
+AG News Test,A2,test,world,1867,25.01

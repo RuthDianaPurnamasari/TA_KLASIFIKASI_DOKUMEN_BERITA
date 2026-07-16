@@ -1,0 +1,19 @@
+﻿dataset,scenario_code,scenario_name,split,jumlah_data,persentase
+Kompas,K1,Title,train,7997,79.99
+Kompas,K1,Title,test,1000,10.0
+Kompas,K1,Title,validation,1000,10.0
+Kompas,K2,Title + Description,train,7997,79.99
+Kompas,K2,Title + Description,test,1000,10.0
+Kompas,K2,Title + Description,validation,1000,10.0
+Kompas,K3,Title + Description + Keyword,train,7997,79.99
+Kompas,K3,Title + Description + Keyword,test,1000,10.0
+Kompas,K3,Title + Description + Keyword,validation,1000,10.0
+Kompas,K4,Title + Description + Keyword + Content,train,7997,79.99
+Kompas,K4,Title + Description + Keyword + Content,test,1000,10.0
+Kompas,K4,Title + Description + Keyword + Content,validation,1000,10.0
+AG News Train,A1,Title,train,107883,90.0
+AG News Train,A1,Title,validation,11988,10.0
+AG News Train,A2,Title + Description,train,107883,90.0
+AG News Train,A2,Title + Description,validation,11988,10.0
+AG News Test,A1,Title,test,7464,100.0
+AG News Test,A2,Title + Description,test,7464,100.0

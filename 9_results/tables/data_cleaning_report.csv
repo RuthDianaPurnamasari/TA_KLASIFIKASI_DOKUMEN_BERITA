@@ -1,0 +1,4 @@
+﻿dataset,jumlah_data_awal,duplikat_dihapus,overlap_dihapus,jumlah_data_akhir,description_kosong_setelah_cleaning
+Kompas,10000,3,0,9997,0
+AG News Train,120000,129,0,119871,0
+AG News Test,7532,62,6,7464,769

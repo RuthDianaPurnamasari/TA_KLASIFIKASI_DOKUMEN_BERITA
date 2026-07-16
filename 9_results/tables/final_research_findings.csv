@@ -1,0 +1,10 @@
+﻿finding_category,dataset,model,finding,change_percentage_point,interpretation
+Description Contribution,Kompas,CNN,Penambahan description mengubah accuracy dari 0.9470 menjadi 0.9580.,1.100000000000001,Description meningkatkan performa.
+Description Contribution,Kompas,Attention-BiLSTM,Penambahan description mengubah accuracy dari 0.9370 menjadi 0.9530.,1.5999999999999903,Description meningkatkan performa.
+Description Contribution,AG News,CNN,Penambahan description mengubah accuracy dari 0.8632 menjadi 0.8876.,2.438370846730975,Description meningkatkan performa.
+Description Contribution,AG News,Attention-BiLSTM,Penambahan description mengubah accuracy dari 0.8556 menjadi 0.8865.,3.0948553054662375,Description meningkatkan performa.
+YAKE Contribution,Kompas,CNN,Penambahan keyword YAKE mengubah accuracy K2 0.9580 menjadi K3 0.9500.,-0.8000000000000007,YAKE belum meningkatkan accuracy.
+YAKE Contribution,Kompas,Attention-BiLSTM,Penambahan keyword YAKE mengubah accuracy K2 0.9530 menjadi K3 0.9520.,-0.10000000000000009,YAKE belum meningkatkan accuracy.
+Best Model,AG News,CNN,Model terbaik berdasarkan accuracy adalah cnn_a2 dengan accuracy 0.8876.,,Model dipilih berdasarkan hasil test set.
+Best Model,Kompas,CNN,Model terbaik berdasarkan accuracy adalah cnn_k2 dengan accuracy 0.9580.,,Model dipilih berdasarkan hasil test set.
+Model Comparison,All,CNN vs Attention-BiLSTM,"CNN unggul pada 4 skenario, Attention-BiLSTM unggul pada 1 skenario, dan seri pada 0 skenario.",,Tidak ada satu arsitektur yang mutlak unggul pada seluruh skenario.

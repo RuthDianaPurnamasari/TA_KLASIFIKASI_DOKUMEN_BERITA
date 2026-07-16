@@ -1,0 +1,3 @@
+﻿dataset,jumlah_baris,jumlah_kolom,jumlah_kategori,missing_class_index,missing_title,description_kosong,missing_category,duplikat_baris,duplikat_title
+ag_news_train,120000,6,4,0,0,0,0,64,5669
+ag_news_test,7532,6,4,0,0,831,0,61,110

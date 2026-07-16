@@ -1,0 +1,30 @@
+{
+    "framework": "TensorFlow/Keras",
+    "layer": "TextVectorization",
+    "dataset": "Kompas",
+    "scenario_code": "K3",
+    "scenario_name": "Title + Description + Keyword",
+    "adapt_split": "train",
+    "standardize": null,
+    "split": "whitespace",
+    "output_mode": "int",
+    "max_tokens": 50000,
+    "actual_vocabulary_size": 15447,
+    "output_sequence_length": 60,
+    "padding_value": 0,
+    "oov_index": 1,
+    "separator_token": "[SEP]",
+    "label_to_index": {
+        "bola": 0,
+        "global": 1,
+        "money": 2,
+        "tekno": 3
+    },
+    "index_to_label": {
+        "0": "bola",
+        "1": "global",
+        "2": "money",
+        "3": "tekno"
+    },
+    "random_seed": 42
+}

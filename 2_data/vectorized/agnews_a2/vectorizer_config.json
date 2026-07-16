@@ -1,0 +1,30 @@
+{
+    "framework": "TensorFlow/Keras",
+    "layer": "TextVectorization",
+    "dataset": "AG News",
+    "scenario_code": "A2",
+    "scenario_name": "Title + Description",
+    "adapt_split": "train",
+    "standardize": null,
+    "split": "whitespace",
+    "output_mode": "int",
+    "max_tokens": 80000,
+    "actual_vocabulary_size": 64868,
+    "output_sequence_length": 60,
+    "padding_value": 0,
+    "oov_index": 1,
+    "separator_token": "[SEP]",
+    "label_to_index": {
+        "business": 0,
+        "sci_tech": 1,
+        "sports": 2,
+        "world": 3
+    },
+    "index_to_label": {
+        "0": "business",
+        "1": "sci_tech",
+        "2": "sports",
+        "3": "world"
+    },
+    "random_seed": 42
+}

@@ -1,0 +1,25 @@
+{
+    "deployment_status": "prepared",
+    "primary_model": "cnn_k2",
+    "comparison_model": "attention_bilstm_k2",
+    "scenario": "K2",
+    "representation": "Title + Description",
+    "models": [
+        {
+            "experiment_name": "cnn_k2",
+            "status": "success",
+            "source": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k2_best.keras",
+            "deployment_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\cnn_k2.keras",
+            "input_shape": "(None, 60)",
+            "output_shape": "(None, 4)"
+        },
+        {
+            "experiment_name": "attention_bilstm_k2",
+            "status": "success",
+            "source": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k2_best.keras",
+            "deployment_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\attention_bilstm_k2.keras",
+            "input_shape": "(None, 60)",
+            "output_shape": "(None, 4)"
+        }
+    ]
+}

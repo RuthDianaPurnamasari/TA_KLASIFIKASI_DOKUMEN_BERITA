@@ -1,0 +1,8 @@
+﻿dataset,column,jumlah_data,avg_words_before,avg_words_after,empty_before,empty_after,new_empty_after_preprocessing
+Kompas,title,9997,10.71,10.98,0,0,0
+Kompas,description,9997,17.87,18.36,0,0,0
+Kompas,content,9997,330.37,337.81,0,0,0
+AG News Train,title,119871,6.78,7.01,0,0,0
+AG News Train,description,119871,31.06,31.78,0,0,0
+AG News Test,title,7464,6.4,6.53,0,0,0
+AG News Test,description,7464,23.73,24.03,769,791,22

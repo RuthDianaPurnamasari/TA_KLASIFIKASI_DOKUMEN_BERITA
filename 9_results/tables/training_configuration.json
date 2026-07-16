@@ -1,0 +1,90 @@
+{
+    "framework": "TensorFlow/Keras",
+    "tensorflow_version": "2.20.0",
+    "random_seed": 42,
+    "num_classes": 4,
+    "epochs": 20,
+    "batch_size": 64,
+    "learning_rate": 0.001,
+    "optimizer": "Adam",
+    "loss": "sparse_categorical_crossentropy",
+    "training_metric": "accuracy",
+    "shared_architecture": {
+        "embedding_dim": 128,
+        "dense_units": 128,
+        "spatial_dropout_rate": 0.2,
+        "dropout_rate": 0.5
+    },
+    "cnn": {
+        "num_filters": 128,
+        "kernel_size": 5
+    },
+    "attention_bilstm": {
+        "lstm_units_per_direction": 64,
+        "attention_units": 64,
+        "recurrent_dropout_rate": 0.0
+    },
+    "callbacks": {
+        "early_stopping": {
+            "monitor": "val_loss",
+            "patience": 3,
+            "min_delta": 0.0001,
+            "restore_best_weights": true
+        },
+        "reduce_lr_on_plateau": {
+            "monitor": "val_loss",
+            "factor": 0.5,
+            "patience": 2,
+            "minimum_learning_rate": 1e-06
+        },
+        "model_checkpoint": {
+            "monitor": "val_loss",
+            "save_best_only": true
+        }
+    },
+    "scenarios": {
+        "K1": {
+            "dataset": "Kompas",
+            "scenario_name": "Title",
+            "max_sequence_length": 20,
+            "actual_vocabulary_size": 10234,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k1"
+        },
+        "K2": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description",
+            "max_sequence_length": 60,
+            "actual_vocabulary_size": 15446,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2"
+        },
+        "K3": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description + Keyword",
+            "max_sequence_length": 60,
+            "actual_vocabulary_size": 15447,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k3"
+        },
+        "K4": {
+            "dataset": "Kompas",
+            "scenario_name": "Title + Description + Keyword + Content",
+            "max_sequence_length": 525,
+            "actual_vocabulary_size": 49333,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k4"
+        },
+        "A1": {
+            "dataset": "AG News",
+            "scenario_name": "Title",
+            "max_sequence_length": 20,
+            "actual_vocabulary_size": 33320,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a1"
+        },
+        "A2": {
+            "dataset": "AG News",
+            "scenario_name": "Title + Description",
+            "max_sequence_length": 60,
+            "actual_vocabulary_size": 64868,
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a2"
+        }
+    },
+    "fair_comparison_note": "CNN dan Attention-BiLSTM menggunakan data split, label, batch size, epoch maksimum, learning rate, optimizer, loss, dan callback yang sama. Perbedaan utama berada pada arsitektur model."
+}

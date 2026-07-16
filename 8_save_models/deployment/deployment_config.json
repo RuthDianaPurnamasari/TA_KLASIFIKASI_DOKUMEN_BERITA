@@ -1,0 +1,35 @@
+{
+    "dataset": "Kompas",
+    "scenario_code": "K2",
+    "scenario_name": "Title + Description",
+    "sequence_length": 60,
+    "num_classes": 4,
+    "models": {
+        "cnn": {
+            "experiment_name": "cnn_k2",
+            "display_name": "CNN"
+        },
+        "attention_bilstm": {
+            "experiment_name": "attention_bilstm_k2",
+            "display_name": "Attention-BiLSTM"
+        }
+    },
+    "best_research_model": {
+        "experiment_name": "cnn_k2",
+        "model_name": "CNN",
+        "accuracy": 0.958
+    },
+    "input": {
+        "required_fields": [
+            "title",
+            "description"
+        ],
+        "text_combination": "title + [SEP] + description"
+    },
+    "labels": {
+        "0": "bola",
+        "1": "global",
+        "2": "money",
+        "3": "tekno"
+    }
+}

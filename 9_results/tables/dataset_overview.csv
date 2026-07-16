@@ -1,0 +1,4 @@
+﻿dataset,jumlah_baris,jumlah_kolom,jumlah_kategori,total_missing_value,total_duplikat_baris,nama_kolom
+kompas,10000,7,4,0,0,"document_id, title, description, content, date, category, link"
+ag_news_train,120000,6,4,0,0,"document_id, class_index, title, description, category, split"
+ag_news_test,7532,6,4,831,0,"document_id, class_index, title, description, category, split"
