@@ -74,10 +74,9 @@ KOMPAS_K3_PATH = (
     / "kompas_scenario_k3_title_description_keyword.csv"
 )
 
-KOMPAS_K4_PATH = (
-    SCENARIOS_DIR
-    / "kompas_scenario_k4_weighted_news.csv"
-)
+# Nama lama dipertahankan agar tidak memutus referensi script
+# lain. Isi K4 tetap berupa representasi bertingkat tanpa
+# pembobotan manual.
 
 
 # ============================================================
@@ -129,6 +128,16 @@ SCENARIO_CONFIGURATION_PATH = (
     / "text_scenario_configuration.json"
 )
 
+YAKE_ABLATION_DESIGN_PATH = (
+    TABLES_DIR
+    / "yake_ablation_design.csv"
+)
+
+YAKE_ABLATION_SAMPLES_PATH = (
+    TABLES_DIR
+    / "yake_ablation_samples.csv"
+)
+
 
 # ============================================================
 # KONFIGURASI
@@ -136,10 +145,88 @@ SCENARIO_CONFIGURATION_PATH = (
 
 SEPARATOR = "[SEP]"
 
-TITLE_WEIGHT = 3
-KEYWORD_WEIGHT = 2
-DESCRIPTION_WEIGHT = 1
-CONTENT_WEIGHT = 1
+RANDOM_SEED = 42
+
+SCENARIO_SAMPLE_SIZE = 3
+
+YAKE_SAMPLE_PER_CATEGORY = 3
+
+
+# ============================================================
+# JUMLAH DATA YANG DIHARAPKAN
+# ============================================================
+
+EXPECTED_ROW_COUNTS = {
+    "Kompas": 9_997,
+    "AG News Train": 119_817,
+    "AG News Test": 7_600,
+}
+
+
+# ============================================================
+# DEFINISI SKENARIO
+# ============================================================
+
+KOMPAS_SCENARIO_DEFINITIONS = {
+    "K1": {
+        "name": "Title",
+        "components": [
+            "title_preprocessed",
+        ],
+        "uses_yake": False,
+        "includes_content": False,
+        "yake_comparison_role": "not_applicable",
+        "comparison_group": "representation_ablation",
+    },
+    "K2": {
+        "name": "Title + Description",
+        "components": [
+            "title_preprocessed",
+            "description_preprocessed",
+        ],
+        "uses_yake": False,
+        "includes_content": False,
+        "yake_comparison_role": "baseline_without_yake",
+        "comparison_group": "K2_vs_K3_yake_ablation",
+    },
+    "K3": {
+        "name": "Title + Description + Keyword YAKE",
+        "components": [
+            "title_preprocessed",
+            "description_preprocessed",
+            "keyword_yake",
+        ],
+        "uses_yake": True,
+        "includes_content": False,
+        "yake_comparison_role": "treatment_with_yake",
+        "comparison_group": "K2_vs_K3_yake_ablation",
+    },
+}
+
+
+AGNEWS_SCENARIO_DEFINITIONS = {
+    "A1": {
+        "name": "Title",
+        "components": [
+            "title_preprocessed",
+        ],
+        "uses_yake": False,
+        "includes_content": False,
+        "yake_comparison_role": "not_applicable",
+        "comparison_group": "agnews_text_ablation",
+    },
+    "A2": {
+        "name": "Title + Description",
+        "components": [
+            "title_preprocessed",
+            "description_preprocessed",
+        ],
+        "uses_yake": False,
+        "includes_content": False,
+        "yake_comparison_role": "not_applicable",
+        "comparison_group": "agnews_text_ablation",
+    },
+}
 
 
 # ============================================================
@@ -152,12 +239,18 @@ def load_dataset(
     required_columns: list[str],
 ) -> pd.DataFrame:
     """
-    Membaca dataset dan memeriksa kolom wajib.
+    Membaca dataset dan memeriksa kelengkapan input.
     """
 
     if not file_path.exists():
         raise FileNotFoundError(
             f"Dataset {dataset_name} tidak ditemukan:\n"
+            f"{file_path}"
+        )
+
+    if not file_path.is_file():
+        raise ValueError(
+            f"Path dataset {dataset_name} bukan file:\n"
             f"{file_path}"
         )
 
@@ -181,7 +274,32 @@ def load_dataset(
     if missing_columns:
         raise ValueError(
             f"Dataset {dataset_name} tidak memiliki "
-            f"kolom berikut: {missing_columns}"
+            f"kolom wajib: {missing_columns}\n"
+            f"Kolom tersedia: {list(dataframe.columns)}"
+        )
+
+    expected_rows = EXPECTED_ROW_COUNTS[
+        dataset_name
+    ]
+
+    if len(dataframe) != expected_rows:
+        raise ValueError(
+            f"Jumlah data {dataset_name} tidak sesuai.\n"
+            f"Seharusnya: {expected_rows:,}\n"
+            f"Ditemukan : {len(dataframe):,}"
+        )
+
+    duplicate_document_ids = int(
+        dataframe["document_id"]
+        .duplicated()
+        .sum()
+    )
+
+    if duplicate_document_ids > 0:
+        raise ValueError(
+            f"Dataset {dataset_name} memiliki "
+            f"{duplicate_document_ids:,} document_id "
+            "duplikat."
         )
 
     return dataframe
@@ -226,11 +344,17 @@ def combine_components(
     title [SEP] description
     """
 
-    valid_components = [
-        safe_text(component)
-        for component in components
-        if safe_text(component)
-    ]
+    valid_components: list[str] = []
+
+    for component in components:
+        component_text = safe_text(
+            component
+        )
+
+        if component_text:
+            valid_components.append(
+                component_text
+            )
 
     return (
         f" {separator} "
@@ -239,54 +363,33 @@ def combine_components(
     )
 
 
-# ============================================================
-# MEMBUAT WEIGHTED NEWS REPRESENTATION
-# ============================================================
-
-def build_weighted_news_representation(
-    title: Any,
-    keyword: Any,
-    description: Any,
-    content: Any,
-) -> str:
+def build_scenario_text(
+    dataframe: pd.DataFrame,
+    component_columns: list[str],
+) -> pd.Series:
     """
-    Membentuk Weighted News Representation:
-
-    Title       x 3
-    Keyword     x 2
-    Description x 1
-    Content     x 1
+    Membentuk teks skenario berdasarkan daftar kolom.
     """
 
-    title_text = safe_text(title)
-    keyword_text = safe_text(keyword)
-    description_text = safe_text(description)
-    content_text = safe_text(content)
+    missing_columns = [
+        column
+        for column in component_columns
+        if column not in dataframe.columns
+    ]
 
-    weighted_components = []
+    if missing_columns:
+        raise ValueError(
+            "Kolom komponen skenario tidak ditemukan: "
+            f"{missing_columns}"
+        )
 
-    # Title x 3
-    weighted_components.extend(
-        [title_text] * TITLE_WEIGHT
-    )
-
-    # Keyword x 2
-    weighted_components.extend(
-        [keyword_text] * KEYWORD_WEIGHT
-    )
-
-    # Description x 1
-    weighted_components.extend(
-        [description_text] * DESCRIPTION_WEIGHT
-    )
-
-    # Content x 1
-    weighted_components.extend(
-        [content_text] * CONTENT_WEIGHT
-    )
-
-    return combine_components(
-        weighted_components
+    return dataframe[
+        component_columns
+    ].apply(
+        lambda row: combine_components(
+            row.tolist()
+        ),
+        axis=1,
     )
 
 
@@ -295,13 +398,18 @@ def build_weighted_news_representation(
 # ============================================================
 
 def count_words(
-    text: Any,
+    value: Any,
 ) -> int:
     """
-    Menghitung jumlah kata berdasarkan whitespace.
+    Menghitung token berdasarkan whitespace.
+
+    Token separator [SEP] ikut dihitung karena nantinya
+    menjadi bagian dari input model.
     """
 
-    text = safe_text(text)
+    text = safe_text(
+        value
+    )
 
     if not text:
         return 0
@@ -311,35 +419,67 @@ def count_words(
     )
 
 
+def count_separator_tokens(
+    value: Any,
+) -> int:
+    """
+    Menghitung jumlah token separator dalam teks.
+    """
+
+    text = safe_text(
+        value
+    )
+
+    if not text:
+        return 0
+
+    return text.split().count(
+        SEPARATOR
+    )
+
+
 # ============================================================
 # MEMBUAT DATASET SKENARIO
 # ============================================================
 
 def create_scenario_dataframe(
     source_dataframe: pd.DataFrame,
-    scenario_name: str,
-    scenario_code: str,
-    scenario_text: pd.Series,
     dataset_name: str,
+    scenario_code: str,
+    scenario_definition: dict,
 ) -> pd.DataFrame:
     """
-    Membentuk dataset skenario dengan format standar.
+    Membentuk dataset skenario dengan metadata yang dapat
+    digunakan oleh modeling, evaluation, dan dashboard.
     """
 
-    scenario_dataframe = pd.DataFrame()
+    component_columns = scenario_definition[
+        "components"
+    ]
 
-    scenario_dataframe["document_id"] = (
-        source_dataframe["document_id"]
+    scenario_text = build_scenario_text(
+        dataframe=source_dataframe,
+        component_columns=component_columns,
     )
 
-    if "class_index" in source_dataframe.columns:
-        scenario_dataframe["class_index"] = (
-            source_dataframe["class_index"]
-        )
-
-    scenario_dataframe["category"] = (
-        source_dataframe["category"]
+    scenario_dataframe = pd.DataFrame(
+        index=source_dataframe.index
     )
+
+    identity_columns = [
+        "document_id",
+        "source_row",
+        "split",
+        "class_index",
+        "category",
+    ]
+
+    for column in identity_columns:
+        if column in source_dataframe.columns:
+            scenario_dataframe[column] = (
+                source_dataframe[column]
+                .values
+            )
 
     scenario_dataframe["dataset"] = (
         dataset_name
@@ -350,14 +490,43 @@ def create_scenario_dataframe(
     )
 
     scenario_dataframe["scenario_name"] = (
-        scenario_name
+        scenario_definition["name"]
     )
+
+    scenario_dataframe["component_signature"] = (
+        " + ".join(component_columns)
+    )
+
+    scenario_dataframe["uses_yake"] = bool(
+        scenario_definition[
+            "uses_yake"
+        ]
+    )
+
+    scenario_dataframe["includes_content"] = bool(
+        scenario_definition[
+            "includes_content"
+        ]
+    )
+
+    scenario_dataframe[
+        "yake_comparison_role"
+    ] = scenario_definition[
+        "yake_comparison_role"
+    ]
+
+    scenario_dataframe[
+        "comparison_group"
+    ] = scenario_definition[
+        "comparison_group"
+    ]
 
     scenario_dataframe["text"] = (
         scenario_text
         .fillna("")
         .astype(str)
         .str.strip()
+        .values
     )
 
     scenario_dataframe["word_count"] = (
@@ -365,172 +534,46 @@ def create_scenario_dataframe(
         .apply(count_words)
     )
 
-    return scenario_dataframe
+    scenario_dataframe[
+        "separator_count"
+    ] = (
+        scenario_dataframe["text"]
+        .apply(count_separator_tokens)
+    )
+
+    return scenario_dataframe.reset_index(
+        drop=True
+    )
 
 
 # ============================================================
-# MEMBUAT SKENARIO KOMPAS
+# MEMBENTUK SEMUA SKENARIO
 # ============================================================
 
-def build_kompas_scenarios(
-    dataframe: pd.DataFrame,
-) -> dict[str, pd.DataFrame]:
-    """
-    Membentuk empat skenario Kompas.
-    """
-
-    # --------------------------------------------------------
-    # K1 - TITLE
-    # --------------------------------------------------------
-
-    k1_text = (
-        dataframe["title_preprocessed"]
-        .apply(safe_text)
-    )
-
-    k1 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name="Title",
-        scenario_code="K1",
-        scenario_text=k1_text,
-        dataset_name="Kompas",
-    )
-
-    # --------------------------------------------------------
-    # K2 - TITLE + DESCRIPTION
-    # --------------------------------------------------------
-
-    k2_text = dataframe.apply(
-        lambda row: combine_components(
-            [
-                row["title_preprocessed"],
-                row["description_preprocessed"],
-            ]
-        ),
-        axis=1,
-    )
-
-    k2 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name="Title + Description",
-        scenario_code="K2",
-        scenario_text=k2_text,
-        dataset_name="Kompas",
-    )
-
-    # --------------------------------------------------------
-    # K3 - TITLE + DESCRIPTION + KEYWORD
-    # --------------------------------------------------------
-
-    k3_text = dataframe.apply(
-        lambda row: combine_components(
-            [
-                row["title_preprocessed"],
-                row["description_preprocessed"],
-                row["keyword_yake"],
-            ]
-        ),
-        axis=1,
-    )
-
-    k3 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name=(
-            "Title + Description + Keyword"
-        ),
-        scenario_code="K3",
-        scenario_text=k3_text,
-        dataset_name="Kompas",
-    )
-
-    # --------------------------------------------------------
-    # K4 - TITLE + DESCRIPTION + KEYWORD + CONTENT
-    # --------------------------------------------------------
-
-    k4_text = dataframe.apply(
-        lambda row: combine_components(
-            [
-                row["title_preprocessed"],
-                row["description_preprocessed"],
-                row["keyword_yake"],
-                row["content_preprocessed"],
-            ]
-        ),
-        axis=1,
-    )
-
-    k4 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name=(
-            "Title + Description + Keyword + Content"
-        ),
-        scenario_code="K4",
-        scenario_text=k4_text,
-        dataset_name="Kompas",
-    )
-
-    return {
-        "K1": k1,
-        "K2": k2,
-        "K3": k3,
-        "K4": k4,
-    }
-
-# ============================================================
-# MEMBUAT SKENARIO AG NEWS
-# ============================================================
-
-def build_agnews_scenarios(
-    dataframe: pd.DataFrame,
+def build_scenarios(
+    source_dataframe: pd.DataFrame,
     dataset_name: str,
+    scenario_definitions: dict[str, dict],
 ) -> dict[str, pd.DataFrame]:
     """
-    Membentuk dua skenario AG News.
+    Membentuk seluruh skenario berdasarkan konfigurasi.
     """
 
-    # --------------------------------------------------------
-    # A1 - TITLE
-    # --------------------------------------------------------
+    scenarios: dict[str, pd.DataFrame] = {}
 
-    a1_text = (
-        dataframe["title_preprocessed"]
-        .apply(safe_text)
-    )
+    for scenario_code, definition in (
+        scenario_definitions.items()
+    ):
+        scenarios[scenario_code] = (
+            create_scenario_dataframe(
+                source_dataframe=source_dataframe,
+                dataset_name=dataset_name,
+                scenario_code=scenario_code,
+                scenario_definition=definition,
+            )
+        )
 
-    a1 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name="Title",
-        scenario_code="A1",
-        scenario_text=a1_text,
-        dataset_name=dataset_name,
-    )
-
-    # --------------------------------------------------------
-    # A2 - TITLE + DESCRIPTION
-    # --------------------------------------------------------
-
-    a2_text = dataframe.apply(
-        lambda row: combine_components(
-            [
-                row["title_preprocessed"],
-                row["description_preprocessed"],
-            ]
-        ),
-        axis=1,
-    )
-
-    a2 = create_scenario_dataframe(
-        source_dataframe=dataframe,
-        scenario_name="Title + Description",
-        scenario_code="A2",
-        scenario_text=a2_text,
-        dataset_name=dataset_name,
-    )
-
-    return {
-        "A1": a1,
-        "A2": a2,
-    }
+    return scenarios
 
 
 # ============================================================
@@ -538,21 +581,24 @@ def build_agnews_scenarios(
 # ============================================================
 
 def validate_scenario(
-    dataframe: pd.DataFrame,
-    expected_rows: int,
+    source_dataframe: pd.DataFrame,
+    scenario_dataframe: pd.DataFrame,
     scenario_code: str,
 ) -> None:
     """
-    Memastikan skenario tidak kehilangan data.
+    Memastikan skenario tidak kehilangan atau mengubah data.
     """
 
-    if len(dataframe) != expected_rows:
+    if len(scenario_dataframe) != len(
+        source_dataframe
+    ):
         raise ValueError(
-            f"Jumlah data skenario {scenario_code} berubah."
+            f"Jumlah data skenario {scenario_code} "
+            "berubah."
         )
 
     empty_text_count = int(
-        dataframe["text"]
+        scenario_dataframe["text"]
         .fillna("")
         .astype(str)
         .str.strip()
@@ -563,11 +609,11 @@ def validate_scenario(
     if empty_text_count > 0:
         raise ValueError(
             f"Skenario {scenario_code} memiliki "
-            f"{empty_text_count} text kosong."
+            f"{empty_text_count:,} teks kosong."
         )
 
     duplicate_document_id = int(
-        dataframe["document_id"]
+        scenario_dataframe["document_id"]
         .duplicated()
         .sum()
     )
@@ -575,7 +621,194 @@ def validate_scenario(
     if duplicate_document_id > 0:
         raise ValueError(
             f"Skenario {scenario_code} memiliki "
-            f"{duplicate_document_id} document_id duplikat."
+            f"{duplicate_document_id:,} document_id "
+            "duplikat."
+        )
+
+    source_ids = (
+        source_dataframe["document_id"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    scenario_ids = (
+        scenario_dataframe["document_id"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    if not source_ids.equals(
+        scenario_ids
+    ):
+        raise ValueError(
+            f"Urutan document_id pada skenario "
+            f"{scenario_code} berubah."
+        )
+
+    source_categories = (
+        source_dataframe["category"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    scenario_categories = (
+        scenario_dataframe["category"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    if not source_categories.equals(
+        scenario_categories
+    ):
+        raise ValueError(
+            f"Label kategori pada skenario "
+            f"{scenario_code} berubah."
+        )
+
+    if (
+        "class_index" in source_dataframe.columns
+        and "class_index" in scenario_dataframe.columns
+    ):
+        source_labels = (
+            source_dataframe["class_index"]
+            .astype(str)
+            .reset_index(drop=True)
+        )
+
+        scenario_labels = (
+            scenario_dataframe["class_index"]
+            .astype(str)
+            .reset_index(drop=True)
+        )
+
+        if not source_labels.equals(
+            scenario_labels
+        ):
+            raise ValueError(
+                f"Class Index pada skenario "
+                f"{scenario_code} berubah."
+            )
+
+    invalid_word_count = int(
+        scenario_dataframe[
+            "word_count"
+        ].le(0).sum()
+    )
+
+    if invalid_word_count > 0:
+        raise ValueError(
+            f"Skenario {scenario_code} memiliki "
+            f"{invalid_word_count:,} word_count "
+            "tidak valid."
+        )
+
+
+# ============================================================
+# VALIDASI PASANGAN K2 DAN K3
+# ============================================================
+
+def validate_yake_ablation_pair(
+    k2_dataframe: pd.DataFrame,
+    k3_dataframe: pd.DataFrame,
+) -> None:
+    """
+    Memastikan perbandingan K2 dan K3 adil.
+
+    Satu-satunya komponen tambahan pada K3 harus berupa
+    keyword YAKE.
+    """
+
+    if len(k2_dataframe) != len(
+        k3_dataframe
+    ):
+        raise ValueError(
+            "Jumlah data K2 dan K3 berbeda."
+        )
+
+    k2_ids = (
+        k2_dataframe["document_id"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    k3_ids = (
+        k3_dataframe["document_id"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    if not k2_ids.equals(
+        k3_ids
+    ):
+        raise ValueError(
+            "Urutan dokumen K2 dan K3 berbeda."
+        )
+
+    if bool(
+        k2_dataframe["uses_yake"].iloc[0]
+    ):
+        raise ValueError(
+            "K2 seharusnya tidak menggunakan YAKE."
+        )
+
+    if not bool(
+        k3_dataframe["uses_yake"].iloc[0]
+    ):
+        raise ValueError(
+            "K3 seharusnya menggunakan YAKE."
+        )
+
+    expected_k2_signature = (
+        "title_preprocessed + "
+        "description_preprocessed"
+    )
+
+    expected_k3_signature = (
+        "title_preprocessed + "
+        "description_preprocessed + "
+        "keyword_yake"
+    )
+
+    actual_k2_signature = (
+        k2_dataframe[
+            "component_signature"
+        ].iloc[0]
+    )
+
+    actual_k3_signature = (
+        k3_dataframe[
+            "component_signature"
+        ].iloc[0]
+    )
+
+    if actual_k2_signature != (
+        expected_k2_signature
+    ):
+        raise ValueError(
+            "Komponen K2 tidak sesuai untuk "
+            "baseline YAKE."
+        )
+
+    if actual_k3_signature != (
+        expected_k3_signature
+    ):
+        raise ValueError(
+            "Komponen K3 tidak sesuai untuk "
+            "eksperimen YAKE."
+        )
+
+    non_increasing_rows = int(
+        (
+            k3_dataframe["word_count"]
+            <= k2_dataframe["word_count"]
+        ).sum()
+    )
+
+    if non_increasing_rows > 0:
+        raise ValueError(
+            f"Ditemukan {non_increasing_rows:,} dokumen "
+            "K3 yang tidak lebih panjang dari K2. "
+            "Periksa kolom keyword_yake."
         )
 
 
@@ -590,59 +823,90 @@ def create_scenario_report(
     Membuat statistik setiap skenario.
     """
 
-    report_rows = []
+    report_rows: list[dict] = []
 
     for dataframe in scenarios:
-
-        word_counts = (
-            dataframe["word_count"]
-        )
+        word_counts = dataframe[
+            "word_count"
+        ]
 
         report_rows.append(
             {
-                "dataset":
-                    dataframe["dataset"].iloc[0],
-                "scenario_code":
+                "dataset": (
+                    dataframe["dataset"].iloc[0]
+                ),
+                "scenario_code": (
                     dataframe[
                         "scenario_code"
-                    ].iloc[0],
-                "scenario_name":
+                    ].iloc[0]
+                ),
+                "scenario_name": (
                     dataframe[
                         "scenario_name"
-                    ].iloc[0],
-                "jumlah_data":
-                    len(dataframe),
-                "avg_word_count":
-                    round(
-                        float(
-                            word_counts.mean()
-                        ),
-                        2,
+                    ].iloc[0]
+                ),
+                "component_signature": (
+                    dataframe[
+                        "component_signature"
+                    ].iloc[0]
+                ),
+                "uses_yake": bool(
+                    dataframe[
+                        "uses_yake"
+                    ].iloc[0]
+                ),
+                "includes_content": bool(
+                    dataframe[
+                        "includes_content"
+                    ].iloc[0]
+                ),
+                "yake_comparison_role": (
+                    dataframe[
+                        "yake_comparison_role"
+                    ].iloc[0]
+                ),
+                "comparison_group": (
+                    dataframe[
+                        "comparison_group"
+                    ].iloc[0]
+                ),
+                "jumlah_data": len(
+                    dataframe
+                ),
+                "avg_word_count": round(
+                    float(
+                        word_counts.mean()
                     ),
-                "median_word_count":
-                    round(
-                        float(
-                            word_counts.median()
-                        ),
-                        2,
+                    2,
+                ),
+                "median_word_count": round(
+                    float(
+                        word_counts.median()
                     ),
-                "min_word_count":
-                    int(
-                        word_counts.min()
+                    2,
+                ),
+                "min_word_count": int(
+                    word_counts.min()
+                ),
+                "max_word_count": int(
+                    word_counts.max()
+                ),
+                "avg_separator_count": round(
+                    float(
+                        dataframe[
+                            "separator_count"
+                        ].mean()
                     ),
-                "max_word_count":
-                    int(
-                        word_counts.max()
-                    ),
-                "empty_text":
-                    int(
-                        dataframe["text"]
-                        .fillna("")
-                        .astype(str)
-                        .str.strip()
-                        .eq("")
-                        .sum()
-                    ),
+                    2,
+                ),
+                "empty_text": int(
+                    dataframe["text"]
+                    .fillna("")
+                    .astype(str)
+                    .str.strip()
+                    .eq("")
+                    .sum()
+                ),
             }
         )
 
@@ -657,37 +921,41 @@ def create_scenario_report(
 
 def create_scenario_samples(
     scenarios: list[pd.DataFrame],
-    sample_size: int = 3,
+    sample_size: int = SCENARIO_SAMPLE_SIZE,
 ) -> pd.DataFrame:
     """
     Mengambil contoh dari setiap skenario.
     """
 
-    samples = []
+    samples: list[pd.DataFrame] = []
 
     for dataframe in scenarios:
-
         actual_sample_size = min(
             sample_size,
             len(dataframe),
         )
 
+        sample_columns = [
+            "document_id",
+            "dataset",
+            "scenario_code",
+            "scenario_name",
+            "uses_yake",
+            "includes_content",
+            "yake_comparison_role",
+            "comparison_group",
+            "category",
+            "text",
+            "word_count",
+            "separator_count",
+        ]
+
         sample = (
-            dataframe.sample(
+            dataframe
+            .sample(
                 n=actual_sample_size,
-                random_state=42,
-            )
-            [
-                [
-                    "document_id",
-                    "dataset",
-                    "scenario_code",
-                    "scenario_name",
-                    "category",
-                    "text",
-                    "word_count",
-                ]
-            ]
+                random_state=RANDOM_SEED,
+            )[sample_columns]
             .copy()
         )
 
@@ -702,6 +970,174 @@ def create_scenario_samples(
 
 
 # ============================================================
+# MEMBUAT SAMPEL KHUSUS K2 VERSUS K3
+# ============================================================
+
+def create_yake_ablation_samples(
+    source_dataframe: pd.DataFrame,
+    k2_dataframe: pd.DataFrame,
+    k3_dataframe: pd.DataFrame,
+    samples_per_category: int = (
+        YAKE_SAMPLE_PER_CATEGORY
+    ),
+) -> pd.DataFrame:
+    """
+    Membuat perbandingan teks K2 dan K3 pada dokumen yang sama.
+    """
+
+    sample_ids: list[str] = []
+
+    for _, category_group in (
+        source_dataframe.groupby(
+            "category",
+            sort=True,
+            dropna=False,
+        )
+    ):
+        sample_size = min(
+            samples_per_category,
+            len(category_group),
+        )
+
+        selected_ids = (
+            category_group
+            .sample(
+                n=sample_size,
+                random_state=RANDOM_SEED,
+            )["document_id"]
+            .astype(str)
+            .tolist()
+        )
+
+        sample_ids.extend(
+            selected_ids
+        )
+
+    source_lookup = (
+        source_dataframe
+        .set_index("document_id")
+    )
+
+    k2_lookup = (
+        k2_dataframe
+        .set_index("document_id")
+    )
+
+    k3_lookup = (
+        k3_dataframe
+        .set_index("document_id")
+    )
+
+    records: list[dict] = []
+
+    for document_id in sample_ids:
+        source_row = source_lookup.loc[
+            document_id
+        ]
+
+        k2_row = k2_lookup.loc[
+            document_id
+        ]
+
+        k3_row = k3_lookup.loc[
+            document_id
+        ]
+
+        records.append(
+            {
+                "document_id": document_id,
+                "category": source_row[
+                    "category"
+                ],
+                "title": source_row.get(
+                    "title",
+                    "",
+                ),
+                "description": source_row.get(
+                    "description",
+                    "",
+                ),
+                "keyword_yake": source_row[
+                    "keyword_yake"
+                ],
+                "k2_without_yake_text": (
+                    k2_row["text"]
+                ),
+                "k3_with_yake_text": (
+                    k3_row["text"]
+                ),
+                "k2_word_count": int(
+                    k2_row["word_count"]
+                ),
+                "k3_word_count": int(
+                    k3_row["word_count"]
+                ),
+                "additional_tokens_from_yake": int(
+                    k3_row["word_count"]
+                    - k2_row["word_count"]
+                ),
+            }
+        )
+
+    return pd.DataFrame(
+        records
+    )
+
+
+# ============================================================
+# DESAIN PERBANDINGAN YAKE
+# ============================================================
+
+def create_yake_ablation_design() -> pd.DataFrame:
+    """
+    Membuat metadata perbandingan yang nantinya digunakan
+    pada evaluasi dan dashboard.
+    """
+
+    return pd.DataFrame(
+        [
+            {
+                "dataset": "Kompas",
+                "comparison_id": (
+                    "K2_vs_K3_yake_ablation"
+                ),
+                "baseline_scenario": "K2",
+                "baseline_name": (
+                    "Title + Description"
+                ),
+                "baseline_uses_yake": False,
+                "treatment_scenario": "K3",
+                "treatment_name": (
+                    "Title + Description + "
+                    "Keyword YAKE"
+                ),
+                "treatment_uses_yake": True,
+                "controlled_components": (
+                    "title_preprocessed + "
+                    "description_preprocessed"
+                ),
+                "additional_component": (
+                    "keyword_yake"
+                ),
+                "required_models": (
+                    "CNN | Attention-BiLSTM"
+                ),
+                "evaluation_metrics": (
+                    "accuracy | precision_macro | "
+                    "recall_macro | f1_macro"
+                ),
+                "dashboard_chart": (
+                    "grouped_bar_chart"
+                ),
+                "comparison_formula": (
+                    "metric_K3 - metric_K2"
+                ),
+            }
+        ]
+    )
+
+
+# ============================================================
 # MENYIMPAN KONFIGURASI SKENARIO
 # ============================================================
 
@@ -712,60 +1148,49 @@ def save_scenario_configuration() -> None:
 
     configuration = {
         "separator": SEPARATOR,
+        "separator_is_model_token": True,
+        "text_preprocessing": (
+            "light preprocessing"
+        ),
         "kompas": {
-            "K1": {
-                "name": "Title",
-                "components": [
-                    "title_preprocessed"
-                ],
-            },
-            "K2": {
-                "name": "Title + Description",
-                "components": [
-                    "title_preprocessed",
-                    "description_preprocessed",
-                ],
-            },
-            "K3": {
-                "name": (
-                    "Title + Description + Keyword"
-                ),
-                "components": [
-                    "title_preprocessed",
-                    "description_preprocessed",
-                    "keyword_yake",
-                ],
-                "keyword_method": "YAKE",
-            },
-            "K4": {
-                "name": (
-                    "Weighted News Representation"
-                ),
-                "weights": {
-                    "title": TITLE_WEIGHT,
-                    "keyword": KEYWORD_WEIGHT,
-                    "description":
-                        DESCRIPTION_WEIGHT,
-                    "content":
-                        CONTENT_WEIGHT,
-                },
-            },
+            code: definition
+            for code, definition in (
+                KOMPAS_SCENARIO_DEFINITIONS
+                .items()
+            )
         },
         "ag_news": {
-            "A1": {
-                "name": "Title",
-                "components": [
-                    "title_preprocessed"
-                ],
-            },
-            "A2": {
-                "name": "Title + Description",
-                "components": [
-                    "title_preprocessed",
-                    "description_preprocessed",
-                ],
-            },
+            code: definition
+            for code, definition in (
+                AGNEWS_SCENARIO_DEFINITIONS
+                .items()
+            )
         },
+        "yake_ablation": {
+            "comparison_id": (
+                "K2_vs_K3_yake_ablation"
+            ),
+            "baseline": "K2",
+            "treatment": "K3",
+            "only_difference": (
+                "keyword_yake"
+            ),
+            "models": [
+                "CNN",
+                "Attention-BiLSTM",
+            ],
+            "dashboard_metrics": [
+                "accuracy",
+                "precision_macro",
+                "recall_macro",
+                "f1_macro",
+            ],
+        },
+
+        "random_seed": RANDOM_SEED,
+        "expected_row_counts": (
+            EXPECTED_ROW_COUNTS
+        ),
     }
 
     with open(
@@ -786,14 +1211,13 @@ def save_scenario_configuration() -> None:
 # ============================================================
 
 def main() -> None:
+    """
+    Membentuk skenario representasi teks Kompas dan AG News.
+    """
 
     print("=" * 72)
     print("STEP 4.4 - BUILD TEXT SCENARIOS")
     print("=" * 72)
-
-    # ========================================================
-    # MEMBUAT FOLDER OUTPUT
-    # ========================================================
 
     SCENARIOS_DIR.mkdir(
         parents=True,
@@ -805,9 +1229,9 @@ def main() -> None:
         exist_ok=True,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # MEMUAT DATASET
-    # ========================================================
+    # --------------------------------------------------------
 
     kompas = load_dataset(
         file_path=KOMPAS_WITH_KEYWORDS_PATH,
@@ -815,9 +1239,10 @@ def main() -> None:
         required_columns=[
             "document_id",
             "category",
+            "title",
+            "description",
             "title_preprocessed",
             "description_preprocessed",
-            "content_preprocessed",
             "keyword_yake",
         ],
     )
@@ -827,6 +1252,8 @@ def main() -> None:
         dataset_name="AG News Train",
         required_columns=[
             "document_id",
+            "source_row",
+            "split",
             "class_index",
             "category",
             "title_preprocessed",
@@ -839,6 +1266,8 @@ def main() -> None:
         dataset_name="AG News Test",
         required_columns=[
             "document_id",
+            "source_row",
+            "split",
             "class_index",
             "category",
             "title_preprocessed",
@@ -846,50 +1275,58 @@ def main() -> None:
         ],
     )
 
-    # ========================================================
-    # MEMBENTUK SKENARIO
-    # ========================================================
+    # --------------------------------------------------------
+    # MEMBENTUK SKENARIO KOMPAS
+    # --------------------------------------------------------
 
-    print("\nMembentuk 4 skenario Kompas...")
+    print("\nMembentuk 3 skenario Kompas...")
 
-    kompas_scenarios = (
-        build_kompas_scenarios(
-            kompas
-        )
+    kompas_scenarios = build_scenarios(
+        source_dataframe=kompas,
+        dataset_name="Kompas",
+        scenario_definitions=(
+            KOMPAS_SCENARIO_DEFINITIONS
+        ),
     )
+
+    # --------------------------------------------------------
+    # MEMBENTUK SKENARIO AG NEWS
+    # --------------------------------------------------------
 
     print(
         "Membentuk 2 skenario AG News Train..."
     )
 
-    agnews_train_scenarios = (
-        build_agnews_scenarios(
-            dataframe=agnews_train,
-            dataset_name="AG News Train",
-        )
+    agnews_train_scenarios = build_scenarios(
+        source_dataframe=agnews_train,
+        dataset_name="AG News Train",
+        scenario_definitions=(
+            AGNEWS_SCENARIO_DEFINITIONS
+        ),
     )
 
     print(
         "Membentuk 2 skenario AG News Test..."
     )
 
-    agnews_test_scenarios = (
-        build_agnews_scenarios(
-            dataframe=agnews_test,
-            dataset_name="AG News Test",
-        )
+    agnews_test_scenarios = build_scenarios(
+        source_dataframe=agnews_test,
+        dataset_name="AG News Test",
+        scenario_definitions=(
+            AGNEWS_SCENARIO_DEFINITIONS
+        ),
     )
 
-    # ========================================================
-    # VALIDASI
-    # ========================================================
+    # --------------------------------------------------------
+    # VALIDASI SEMUA SKENARIO
+    # --------------------------------------------------------
 
     for code, dataframe in (
         kompas_scenarios.items()
     ):
         validate_scenario(
-            dataframe=dataframe,
-            expected_rows=len(kompas),
+            source_dataframe=kompas,
+            scenario_dataframe=dataframe,
             scenario_code=code,
         )
 
@@ -897,83 +1334,69 @@ def main() -> None:
         agnews_train_scenarios.items()
     ):
         validate_scenario(
-            dataframe=dataframe,
-            expected_rows=len(
-                agnews_train
-            ),
-            scenario_code=(
-                f"TRAIN-{code}"
-            ),
+            source_dataframe=agnews_train,
+            scenario_dataframe=dataframe,
+            scenario_code=f"TRAIN-{code}",
         )
 
     for code, dataframe in (
         agnews_test_scenarios.items()
     ):
         validate_scenario(
-            dataframe=dataframe,
-            expected_rows=len(
-                agnews_test
-            ),
-            scenario_code=(
-                f"TEST-{code}"
-            ),
+            source_dataframe=agnews_test,
+            scenario_dataframe=dataframe,
+            scenario_code=f"TEST-{code}",
         )
 
-    # ========================================================
+    validate_yake_ablation_pair(
+        k2_dataframe=(
+            kompas_scenarios["K2"]
+        ),
+        k3_dataframe=(
+            kompas_scenarios["K3"]
+        ),
+    )
+
+    # --------------------------------------------------------
     # MENYIMPAN DATASET SKENARIO
-    # ========================================================
+    # --------------------------------------------------------
 
-    kompas_scenarios["K1"].to_csv(
-        KOMPAS_K1_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
+    output_mapping = {
+        KOMPAS_K1_PATH: (
+            kompas_scenarios["K1"]
+        ),
+        KOMPAS_K2_PATH: (
+            kompas_scenarios["K2"]
+        ),
+        KOMPAS_K3_PATH: (
+            kompas_scenarios["K3"]
+        ),
+        AGNEWS_TRAIN_A1_PATH: (
+            agnews_train_scenarios["A1"]
+        ),
+        AGNEWS_TRAIN_A2_PATH: (
+            agnews_train_scenarios["A2"]
+        ),
+        AGNEWS_TEST_A1_PATH: (
+            agnews_test_scenarios["A1"]
+        ),
+        AGNEWS_TEST_A2_PATH: (
+            agnews_test_scenarios["A2"]
+        ),
+    }
 
-    kompas_scenarios["K2"].to_csv(
-        KOMPAS_K2_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
+    for output_path, dataframe in (
+        output_mapping.items()
+    ):
+        dataframe.to_csv(
+            output_path,
+            index=False,
+            encoding="utf-8-sig",
+        )
 
-    kompas_scenarios["K3"].to_csv(
-        KOMPAS_K3_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    kompas_scenarios["K4"].to_csv(
-        KOMPAS_K4_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    agnews_train_scenarios["A1"].to_csv(
-        AGNEWS_TRAIN_A1_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    agnews_train_scenarios["A2"].to_csv(
-        AGNEWS_TRAIN_A2_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    agnews_test_scenarios["A1"].to_csv(
-        AGNEWS_TEST_A1_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    agnews_test_scenarios["A2"].to_csv(
-        AGNEWS_TEST_A2_PATH,
-        index=False,
-        encoding="utf-8-sig",
-    )
-
-    # ========================================================
-    # MENGGABUNGKAN SEMUA UNTUK LAPORAN
-    # ========================================================
+    # --------------------------------------------------------
+    # MEMBUAT LAPORAN
+    # --------------------------------------------------------
 
     all_scenarios = [
         *kompas_scenarios.values(),
@@ -981,10 +1404,8 @@ def main() -> None:
         *agnews_test_scenarios.values(),
     ]
 
-    scenario_report = (
-        create_scenario_report(
-            all_scenarios
-        )
+    scenario_report = create_scenario_report(
+        all_scenarios
     )
 
     scenario_samples = (
@@ -993,9 +1414,25 @@ def main() -> None:
         )
     )
 
-    # ========================================================
+    yake_ablation_design = (
+        create_yake_ablation_design()
+    )
+
+    yake_ablation_samples = (
+        create_yake_ablation_samples(
+            source_dataframe=kompas,
+            k2_dataframe=(
+                kompas_scenarios["K2"]
+            ),
+            k3_dataframe=(
+                kompas_scenarios["K3"]
+            ),
+        )
+    )
+
+    # --------------------------------------------------------
     # MENYIMPAN LAPORAN
-    # ========================================================
+    # --------------------------------------------------------
 
     scenario_report.to_csv(
         SCENARIO_REPORT_PATH,
@@ -1009,11 +1446,23 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
+    yake_ablation_design.to_csv(
+        YAKE_ABLATION_DESIGN_PATH,
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    yake_ablation_samples.to_csv(
+        YAKE_ABLATION_SAMPLES_PATH,
+        index=False,
+        encoding="utf-8-sig",
+    )
+
     save_scenario_configuration()
 
-    # ========================================================
+    # --------------------------------------------------------
     # MENAMPILKAN HASIL
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("HASIL PEMBENTUKAN SKENARIO")
@@ -1023,6 +1472,42 @@ def main() -> None:
         scenario_report.to_string(
             index=False
         )
+    )
+
+    print("\nValidasi perbandingan YAKE:")
+
+    print(
+        "Baseline tanpa YAKE : "
+        "K2 - Title + Description"
+    )
+
+    print(
+    "Eksperimen YAKE     : "
+    "K3 - Title + Description + Keyword YAKE"
+    )
+
+    print(
+        "Jumlah dokumen K2   : "
+        f"{len(kompas_scenarios['K2']):,}"
+    )
+
+    print(
+        "Jumlah dokumen K3   : "
+        f"{len(kompas_scenarios['K3']):,}"
+    )
+
+    avg_additional_tokens = (
+        kompas_scenarios["K3"][
+            "word_count"
+        ]
+        - kompas_scenarios["K2"][
+            "word_count"
+        ]
+    ).mean()
+
+    print(
+        "Rata-rata tambahan token dari YAKE: "
+        f"{avg_additional_tokens:.2f}"
     )
 
     print("\n" + "=" * 72)
@@ -1037,6 +1522,12 @@ def main() -> None:
 
     print("\nContoh skenario:")
     print(SCENARIO_SAMPLES_PATH)
+
+    print("\nDesain perbandingan YAKE:")
+    print(YAKE_ABLATION_DESIGN_PATH)
+
+    print("\nContoh K2 versus K3:")
+    print(YAKE_ABLATION_SAMPLES_PATH)
 
     print("\nKonfigurasi skenario:")
     print(SCENARIO_CONFIGURATION_PATH)

@@ -5,26 +5,30 @@
     "scenario_code": "A2",
     "scenario_name": "Title + Description",
     "adapt_split": "train",
+    "vocabulary_group": "agnews_shared",
+    "vocabulary_adapt_scenario": "A2",
+    "shared_vocabulary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\_shared_vocabularies\\agnews_shared\\vocabulary.txt",
+    "shared_vocabulary_sha256": "26a96b97aa8277b641d86dd873b7644749a918685553be58b8aa7fd2cc058aaf",
     "standardize": null,
     "split": "whitespace",
     "output_mode": "int",
     "max_tokens": 80000,
-    "actual_vocabulary_size": 64868,
+    "actual_vocabulary_size": 65049,
     "output_sequence_length": 60,
     "padding_value": 0,
     "oov_index": 1,
     "separator_token": "[SEP]",
     "label_to_index": {
-        "business": 0,
-        "sci_tech": 1,
-        "sports": 2,
-        "world": 3
+        "world": 0,
+        "sports": 1,
+        "business": 2,
+        "sci_tech": 3
     },
     "index_to_label": {
-        "0": "business",
-        "1": "sci_tech",
-        "2": "sports",
-        "3": "world"
+        "0": "world",
+        "1": "sports",
+        "2": "business",
+        "3": "sci_tech"
     },
     "random_seed": 42
 }

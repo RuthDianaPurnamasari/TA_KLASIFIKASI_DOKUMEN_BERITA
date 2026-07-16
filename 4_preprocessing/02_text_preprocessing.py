@@ -81,35 +81,36 @@ TEXT_PREPROCESSING_SAMPLE_PATH = (
 
 
 # ============================================================
-# MEMBACA DATASET
+# JUMLAH DATA YANG DIHARAPKAN
 # ============================================================
 
-def load_dataset(
-    file_path: Path,
-    dataset_name: str,
-) -> pd.DataFrame:
-    """
-    Membaca dataset clean.
-    """
+EXPECTED_ROW_COUNTS = {
+    "Kompas": 9_997,
+    "AG News Train": 119_817,
+    "AG News Test": 7_600,
+}
 
-    if not file_path.exists():
-        raise FileNotFoundError(
-            f"Dataset {dataset_name} tidak ditemukan:\n"
-            f"{file_path}"
-        )
 
-    dataframe = pd.read_csv(
-        file_path,
-        encoding="utf-8-sig",
-        keep_default_na=False,
-    )
+# ============================================================
+# KOLOM WAJIB
+# ============================================================
 
-    if dataframe.empty:
-        raise ValueError(
-            f"Dataset {dataset_name} kosong."
-        )
+KOMPAS_REQUIRED_COLUMNS = [
+    "title",
+    "description",
+    "content",
+    "category",
+]
 
-    return dataframe
+AG_NEWS_REQUIRED_COLUMNS = [
+    "document_id",
+    "source_row",
+    "class_index",
+    "category",
+    "title",
+    "description",
+    "split",
+]
 
 
 # ============================================================
@@ -160,6 +161,142 @@ MULTIPLE_WHITESPACE_PATTERN = re.compile(
 )
 
 
+# Entitas HTML numerik AG News yang kehilangan karakter "&".
+#
+# Contoh:
+# #39;   seharusnya &#39;
+# #36;   seharusnya &#36;
+# #151;  seharusnya &#151;
+# #x2014; seharusnya &#x2014;
+MALFORMED_HTML_ENTITY_PATTERN = re.compile(
+    r"(?<!&)#(?P<entity>x[0-9a-fA-F]+|\d+);",
+    flags=re.IGNORECASE,
+)
+
+
+# ============================================================
+# MEMBACA DATASET
+# ============================================================
+
+def load_dataset(
+    file_path: Path,
+    dataset_name: str,
+) -> pd.DataFrame:
+    """
+    Membaca dataset hasil data cleaning.
+    """
+
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f"Dataset {dataset_name} tidak ditemukan:\n"
+            f"{file_path}"
+        )
+
+    if not file_path.is_file():
+        raise ValueError(
+            f"Path dataset {dataset_name} bukan file:\n"
+            f"{file_path}"
+        )
+
+    dataframe = pd.read_csv(
+        file_path,
+        encoding="utf-8-sig",
+        keep_default_na=False,
+    )
+
+    if dataframe.empty:
+        raise ValueError(
+            f"Dataset {dataset_name} kosong."
+        )
+
+    return dataframe
+
+
+# ============================================================
+# VALIDASI KOLOM WAJIB
+# ============================================================
+
+def validate_required_columns(
+    dataframe: pd.DataFrame,
+    required_columns: list[str],
+    dataset_name: str,
+) -> None:
+    """
+    Memastikan seluruh kolom wajib tersedia.
+    """
+
+    missing_columns = [
+        column
+        for column in required_columns
+        if column not in dataframe.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Dataset {dataset_name} tidak memiliki "
+            f"kolom wajib: {missing_columns}\n"
+            f"Kolom tersedia: {list(dataframe.columns)}"
+        )
+
+
+# ============================================================
+# VALIDASI JUMLAH DATA
+# ============================================================
+
+def validate_expected_row_count(
+    dataframe: pd.DataFrame,
+    dataset_name: str,
+) -> None:
+    """
+    Memastikan script membaca hasil data cleaning terbaru.
+    """
+
+    if dataset_name not in EXPECTED_ROW_COUNTS:
+        raise KeyError(
+            f"Jumlah data yang diharapkan untuk "
+            f"{dataset_name} belum dikonfigurasi."
+        )
+
+    expected_count = EXPECTED_ROW_COUNTS[
+        dataset_name
+    ]
+
+    actual_count = len(dataframe)
+
+    if actual_count != expected_count:
+        raise ValueError(
+            f"Jumlah data {dataset_name} tidak sesuai.\n"
+            f"Seharusnya: {expected_count:,}\n"
+            f"Ditemukan : {actual_count:,}\n"
+            "Pastikan 4_preprocessing/01_data_cleaning.py "
+            "telah dijalankan menggunakan dataset terbaru."
+        )
+
+
+# ============================================================
+# MEMPERBAIKI ENTITAS HTML AG NEWS
+# ============================================================
+
+MALFORMED_HTML_ENTITY_PATTERN = re.compile(
+    r"(?<!&)#(?:x[0-9a-fA-F]+|\d+);",
+    flags=re.IGNORECASE,
+)
+
+
+def repair_malformed_html_entities(
+    text: str,
+) -> str:
+    """
+    Memperbaiki entitas HTML numerik AG News yang
+    kehilangan karakter ampersand.
+    """
+
+    return MALFORMED_HTML_ENTITY_PATTERN.sub(
+        lambda match: f"&{match.group(0)}",
+        text,
+    )
+
+
 # ============================================================
 # NORMALISASI APOSTROPHE
 # ============================================================
@@ -168,12 +305,12 @@ def normalize_apostrophes(
     text: str,
 ) -> str:
     """
-    Menyamakan variasi apostrophe Unicode menjadi apostrophe
-    standar.
+    Menyeragamkan variasi apostrophe Unicode menjadi
+    apostrophe standar.
 
     Contoh:
-    don’t -> don't
-    company’s -> company's
+    don't    -> don't
+    company's -> company's
     """
 
     replacements = {
@@ -198,29 +335,34 @@ def normalize_apostrophes(
 # ============================================================
 
 def preprocess_text(
-    value,
+    value: object,
 ) -> str:
     """
-    Melakukan light text preprocessing.
+    Melakukan light text preprocessing untuk CNN dan
+    Attention-BiLSTM.
 
     Tahapan:
     1. Menangani nilai kosong.
-    2. HTML entity decoding.
-    3. Unicode normalization.
-    4. Normalisasi apostrophe.
-    5. Menghapus HTML tag.
-    6. Menghapus URL.
-    7. Menghapus email.
-    8. Case folding.
-    9. Menghapus karakter kontrol.
-    10. Menormalisasi karakter non-alfanumerik.
-    11. Merapikan whitespace.
+    2. Memperbaiki entitas HTML AG News yang tidak lengkap.
+    3. Melakukan HTML entity decoding.
+    4. Melakukan normalisasi Unicode.
+    5. Menyeragamkan apostrophe.
+    6. Menghapus HTML tag.
+    7. Menghapus URL.
+    8. Menghapus alamat email.
+    9. Melakukan case folding.
+    10. Menghapus karakter kontrol.
+    11. Mengganti karakter non-alfanumerik dengan spasi.
+    12. Menghapus underscore.
+    13. Menghapus apostrophe yang berdiri sendiri.
+    14. Menormalisasi whitespace.
 
-    Catatan:
+    Ketentuan:
     - Angka dipertahankan.
     - Apostrophe di dalam kata dipertahankan.
     - Stopword tidak dihapus.
     - Stemming tidak dilakukan.
+    - Lemmatization tidak dilakukan.
     """
 
     if value is None:
@@ -235,7 +377,15 @@ def preprocess_text(
         return ""
 
     # --------------------------------------------------------
-    # 1. Decode HTML entity
+    # 1. Memperbaiki entitas HTML numerik AG News
+    # --------------------------------------------------------
+
+    text = repair_malformed_html_entities(
+        text
+    )
+
+    # --------------------------------------------------------
+    # 2. Decode HTML entity
     # --------------------------------------------------------
 
     text = html.unescape(
@@ -243,7 +393,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 2. Unicode normalization
+    # 3. Unicode normalization
     # --------------------------------------------------------
 
     text = unicodedata.normalize(
@@ -252,7 +402,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 3. Normalisasi apostrophe
+    # 4. Normalisasi apostrophe
     # --------------------------------------------------------
 
     text = normalize_apostrophes(
@@ -260,7 +410,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 4. Menghapus HTML tag
+    # 5. Menghapus HTML tag
     # --------------------------------------------------------
 
     text = HTML_TAG_PATTERN.sub(
@@ -269,7 +419,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 5. Menghapus URL
+    # 6. Menghapus URL
     # --------------------------------------------------------
 
     text = URL_PATTERN.sub(
@@ -278,7 +428,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 6. Menghapus email
+    # 7. Menghapus email
     # --------------------------------------------------------
 
     text = EMAIL_PATTERN.sub(
@@ -287,13 +437,13 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 7. Case folding
+    # 8. Case folding
     # --------------------------------------------------------
 
-    text = text.lower()
+    text = text.casefold()
 
     # --------------------------------------------------------
-    # 8. Menghapus karakter kontrol
+    # 9. Menghapus karakter kontrol
     # --------------------------------------------------------
 
     text = CONTROL_CHARACTER_PATTERN.sub(
@@ -302,11 +452,13 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 9. Mempertahankan huruf, angka, dan apostrophe
+    # 10. Mempertahankan:
+    # - huruf Unicode;
+    # - angka;
+    # - whitespace;
+    # - apostrophe.
     #
-    # [^\w\s'] berarti:
-    # selain huruf/angka/underscore, whitespace, apostrophe
-    # akan diganti spasi.
+    # Karakter lainnya diganti menjadi spasi.
     # --------------------------------------------------------
 
     text = re.sub(
@@ -317,7 +469,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 10. Menghapus underscore
+    # 11. Menghapus underscore
     # --------------------------------------------------------
 
     text = text.replace(
@@ -326,7 +478,9 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 11. Membersihkan apostrophe yang berdiri sendiri
+    # 12. Menghapus apostrophe yang berdiri sendiri
+    #
+    # Apostrophe pada don't dan company's tetap dipertahankan.
     # --------------------------------------------------------
 
     text = re.sub(
@@ -336,7 +490,7 @@ def preprocess_text(
     )
 
     # --------------------------------------------------------
-    # 12. Normalisasi whitespace
+    # 13. Normalisasi whitespace
     # --------------------------------------------------------
 
     text = MULTIPLE_WHITESPACE_PATTERN.sub(
@@ -352,13 +506,16 @@ def preprocess_text(
 # ============================================================
 
 def count_words(
-    value,
+    value: object,
 ) -> int:
     """
     Menghitung jumlah kata berdasarkan whitespace.
     """
 
     if value is None:
+        return 0
+
+    if pd.isna(value):
         return 0
 
     text = str(value).strip()
@@ -395,6 +552,35 @@ def count_empty_text(
 
 
 # ============================================================
+# MENGHITUNG TEKS YANG BERUBAH
+# ============================================================
+
+def count_changed_text(
+    original_series: pd.Series,
+    preprocessed_series: pd.Series,
+) -> int:
+    """
+    Menghitung jumlah teks yang berubah setelah preprocessing.
+    """
+
+    original = (
+        original_series
+        .fillna("")
+        .astype(str)
+    )
+
+    preprocessed = (
+        preprocessed_series
+        .fillna("")
+        .astype(str)
+    )
+
+    return int(
+        original.ne(preprocessed).sum()
+    )
+
+
+# ============================================================
 # PREPROCESSING KOLOM TEKS
 # ============================================================
 
@@ -405,7 +591,7 @@ def preprocess_text_columns(
     """
     Membuat kolom baru dengan suffix '_preprocessed'.
 
-    Kolom asli tidak ditimpa.
+    Kolom teks asli tidak ditimpa agar proses dapat diaudit.
     """
 
     dataframe = dataframe.copy()
@@ -437,6 +623,151 @@ def preprocess_text_columns(
 
 
 # ============================================================
+# VALIDASI HASIL PREPROCESSING
+# ============================================================
+
+def validate_preprocessed_dataset(
+    dataframe: pd.DataFrame,
+    dataset_name: str,
+    text_columns: list[str],
+    expected_row_count: int,
+) -> None:
+    """
+    Memastikan:
+    1. dataset tidak kosong;
+    2. jumlah baris tidak berubah;
+    3. seluruh kolom hasil preprocessing tersedia;
+    4. preprocessing tidak menghasilkan teks kosong baru;
+    5. entitas HTML rusak tidak tersisa.
+    """
+
+    if dataframe.empty:
+        raise ValueError(
+            f"Dataset {dataset_name} kosong "
+            f"setelah preprocessing."
+        )
+
+    if len(dataframe) != expected_row_count:
+        raise ValueError(
+            f"Jumlah baris {dataset_name} berubah "
+            f"saat preprocessing.\n"
+            f"Sebelum: {expected_row_count:,}\n"
+            f"Sesudah: {len(dataframe):,}"
+        )
+
+    for column in text_columns:
+
+        preprocessed_column = (
+            f"{column}_preprocessed"
+        )
+
+        if preprocessed_column not in dataframe.columns:
+            raise ValueError(
+                f"Kolom {preprocessed_column} "
+                f"tidak ditemukan pada {dataset_name}."
+            )
+
+        empty_before = count_empty_text(
+            dataframe[column]
+        )
+
+        empty_after = count_empty_text(
+            dataframe[
+                preprocessed_column
+            ]
+        )
+
+        new_empty = (
+            empty_after
+            - empty_before
+        )
+
+        if new_empty > 0:
+            raise ValueError(
+                f"Preprocessing menghasilkan "
+                f"{new_empty:,} teks kosong baru pada "
+                f"{dataset_name}, kolom {column}.\n"
+                f"Kosong sebelum: {empty_before:,}\n"
+                f"Kosong sesudah: {empty_after:,}"
+            )
+
+        malformed_entity_count = int(
+            dataframe[
+                preprocessed_column
+            ]
+            .fillna("")
+            .astype(str)
+            .str.contains(
+                MALFORMED_HTML_ENTITY_PATTERN,
+                regex=True,
+            )
+            .sum()
+        )
+
+        if malformed_entity_count > 0:
+            raise ValueError(
+                f"Masih ditemukan "
+                f"{malformed_entity_count:,} teks dengan "
+                f"entitas HTML tidak valid pada "
+                f"{dataset_name}, kolom "
+                f"{preprocessed_column}."
+            )
+
+
+# ============================================================
+# VALIDASI IDENTITAS BARIS
+# ============================================================
+
+def validate_row_identity_preserved(
+    dataframe_before: pd.DataFrame,
+    dataframe_after: pd.DataFrame,
+    dataset_name: str,
+) -> None:
+    """
+    Memastikan preprocessing tidak mengubah urutan atau
+    identitas dokumen.
+    """
+
+    if len(dataframe_before) != len(dataframe_after):
+        raise ValueError(
+            f"Jumlah baris {dataset_name} berubah."
+        )
+
+    identity_columns = [
+        column
+        for column in [
+            "document_id",
+            "source_row",
+        ]
+        if column in dataframe_before.columns
+        and column in dataframe_after.columns
+    ]
+
+    for column in identity_columns:
+
+        before_values = (
+            dataframe_before[column]
+            .astype(str)
+            .reset_index(drop=True)
+        )
+
+        after_values = (
+            dataframe_after[column]
+            .astype(str)
+            .reset_index(drop=True)
+        )
+
+        if not before_values.equals(
+            after_values
+        ):
+            raise ValueError(
+                f"Urutan atau nilai {column} pada "
+                f"{dataset_name} berubah selama "
+                f"preprocessing."
+            )
+
+
+# ============================================================
 # MEMBUAT LAPORAN PREPROCESSING
 # ============================================================
 
@@ -450,7 +781,7 @@ def create_preprocessing_report(
     preprocessing.
     """
 
-    report_rows = []
+    report_rows: list[dict] = []
 
     for column in text_columns:
 
@@ -470,18 +801,29 @@ def create_preprocessing_report(
             .apply(count_words)
         )
 
-        original_empty = (
-            count_empty_text(
-                dataframe[column]
-            )
+        original_empty = count_empty_text(
+            dataframe[column]
         )
 
-        preprocessed_empty = (
-            count_empty_text(
-                dataframe[
-                    preprocessed_column
-                ]
-            )
+        preprocessed_empty = count_empty_text(
+            dataframe[
+                preprocessed_column
+            ]
+        )
+
+        changed_text = count_changed_text(
+            dataframe[column],
+            dataframe[
+                preprocessed_column
+            ],
+        )
+
+        changed_percentage = (
+            changed_text
+            / len(dataframe)
+            * 100
+            if len(dataframe) > 0
+            else 0.0
         )
 
         report_rows.append(
@@ -503,13 +845,34 @@ def create_preprocessing_report(
                     ),
                     2,
                 ),
-                "empty_before":
-                    original_empty,
-                "empty_after":
-                    preprocessed_empty,
+                "min_words_before": int(
+                    original_word_count.min()
+                ),
+                "min_words_after": int(
+                    preprocessed_word_count.min()
+                ),
+                "max_words_before": int(
+                    original_word_count.max()
+                ),
+                "max_words_after": int(
+                    preprocessed_word_count.max()
+                ),
+                "empty_before": (
+                    original_empty
+                ),
+                "empty_after": (
+                    preprocessed_empty
+                ),
                 "new_empty_after_preprocessing": (
                     preprocessed_empty
                     - original_empty
+                ),
+                "jumlah_teks_berubah": (
+                    changed_text
+                ),
+                "persentase_teks_berubah": round(
+                    changed_percentage,
+                    6,
                 ),
             }
         )
@@ -530,7 +893,7 @@ def create_preprocessing_samples(
     """
     Mengambil contoh teks sebelum dan sesudah preprocessing.
 
-    Menggunakan random_state agar sampel reproducible.
+    Random state digunakan agar sampel dapat direproduksi.
     """
 
     actual_sample_size = min(
@@ -539,14 +902,15 @@ def create_preprocessing_samples(
     )
 
     sampled_dataframe = (
-        dataframe.sample(
+        dataframe
+        .sample(
             n=actual_sample_size,
             random_state=42,
         )
         .copy()
     )
 
-    sample_rows = []
+    sample_rows: list[dict] = []
 
     for _, row in sampled_dataframe.iterrows():
 
@@ -558,21 +922,28 @@ def create_preprocessing_samples(
 
             sample_rows.append(
                 {
-                    "dataset":
-                        dataset_name,
-                    "document_id":
-                        row.get(
-                            "document_id",
-                            "",
-                        ),
-                    "column":
-                        column,
-                    "before":
-                        row[column],
-                    "after":
+                    "dataset": dataset_name,
+                    "document_id": row.get(
+                        "document_id",
+                        "",
+                    ),
+                    "source_row": row.get(
+                        "source_row",
+                        "",
+                    ),
+                    "column": column,
+                    "before": row[column],
+                    "after": row[
+                        preprocessed_column
+                    ],
+                    "words_before": count_words(
+                        row[column]
+                    ),
+                    "words_after": count_words(
                         row[
                             preprocessed_column
-                        ],
+                        ]
+                    ),
                 }
             )
 
@@ -582,74 +953,36 @@ def create_preprocessing_samples(
 
 
 # ============================================================
-# VALIDASI HASIL PREPROCESSING
-# ============================================================
-
-def validate_preprocessed_dataset(
-    dataframe: pd.DataFrame,
-    dataset_name: str,
-    text_columns: list[str],
-) -> None:
-    """
-    Memastikan:
-    - jumlah baris tidak berubah;
-    - kolom hasil preprocessing tersedia;
-    - title tidak menjadi kosong.
-
-    Description AG News Test boleh kosong karena sudah
-    ditemukan pada dataset asli.
-    """
-
-    if dataframe.empty:
-        raise ValueError(
-            f"Dataset {dataset_name} kosong "
-            f"setelah preprocessing."
-        )
-
-    for column in text_columns:
-
-        preprocessed_column = (
-            f"{column}_preprocessed"
-        )
-
-        if (
-            preprocessed_column
-            not in dataframe.columns
-        ):
-            raise ValueError(
-                f"Kolom {preprocessed_column} "
-                f"tidak ditemukan."
-            )
-
-    if "title_preprocessed" in dataframe.columns:
-
-        empty_title = count_empty_text(
-            dataframe[
-                "title_preprocessed"
-            ]
-        )
-
-        if empty_title > 0:
-            raise ValueError(
-                f"Dataset {dataset_name} memiliki "
-                f"{empty_title} title kosong setelah "
-                f"preprocessing."
-            )
-
-
-# ============================================================
 # PROGRAM UTAMA
 # ============================================================
 
 def main() -> None:
+    """
+    Menjalankan light text preprocessing terhadap
+    dataset Kompas dan AG News.
+    """
 
     print("=" * 72)
     print("STEP 4.2 - TEXT PREPROCESSING")
     print("=" * 72)
 
-    # ========================================================
+    # --------------------------------------------------------
+    # MEMBUAT FOLDER OUTPUT
+    # --------------------------------------------------------
+
+    PROCESSED_DATA_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    TABLES_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # --------------------------------------------------------
     # MEMUAT DATASET CLEAN
-    # ========================================================
+    # --------------------------------------------------------
 
     kompas = load_dataset(
         KOMPAS_CLEAN_PATH,
@@ -666,9 +999,52 @@ def main() -> None:
         "AG News Test",
     )
 
-    # ========================================================
-    # MENYIMPAN JUMLAH BARIS SEBELUM PREPROCESSING
-    # ========================================================
+    # --------------------------------------------------------
+    # VALIDASI KOLOM
+    # --------------------------------------------------------
+
+    validate_required_columns(
+        kompas,
+        KOMPAS_REQUIRED_COLUMNS,
+        "Kompas",
+    )
+
+    validate_required_columns(
+        agnews_train,
+        AG_NEWS_REQUIRED_COLUMNS,
+        "AG News Train",
+    )
+
+    validate_required_columns(
+        agnews_test,
+        AG_NEWS_REQUIRED_COLUMNS,
+        "AG News Test",
+    )
+
+    # --------------------------------------------------------
+    # VALIDASI JUMLAH INPUT
+    # --------------------------------------------------------
+
+    validate_expected_row_count(
+        kompas,
+        "Kompas",
+    )
+
+    validate_expected_row_count(
+        agnews_train,
+        "AG News Train",
+    )
+
+    validate_expected_row_count(
+        agnews_test,
+        "AG News Test",
+    )
+
+    # Menyimpan salinan sebelum preprocessing untuk
+    # memvalidasi identitas dan urutan dokumen.
+    kompas_before = kompas.copy()
+    agnews_train_before = agnews_train.copy()
+    agnews_test_before = agnews_test.copy()
 
     original_row_counts = {
         "Kompas": len(
@@ -682,9 +1058,9 @@ def main() -> None:
         ),
     }
 
-    # ========================================================
+    # --------------------------------------------------------
     # PREPROCESSING KOMPAS
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("PREPROCESSING KOMPAS")
@@ -701,9 +1077,9 @@ def main() -> None:
         text_columns=kompas_text_columns,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # PREPROCESSING AG NEWS TRAIN
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("PREPROCESSING AG NEWS TRAIN")
@@ -719,9 +1095,9 @@ def main() -> None:
         text_columns=agnews_text_columns,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # PREPROCESSING AG NEWS TEST
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("PREPROCESSING AG NEWS TEST")
@@ -732,61 +1108,70 @@ def main() -> None:
         text_columns=agnews_text_columns,
     )
 
-    # ========================================================
-    # VALIDASI JUMLAH BARIS
-    # ========================================================
+    # --------------------------------------------------------
+    # VALIDASI IDENTITAS BARIS
+    # --------------------------------------------------------
 
-    if len(kompas) != original_row_counts["Kompas"]:
-        raise ValueError(
-            "Jumlah baris Kompas berubah "
-            "saat preprocessing."
-        )
+    validate_row_identity_preserved(
+        dataframe_before=kompas_before,
+        dataframe_after=kompas,
+        dataset_name="Kompas",
+    )
 
-    if (
-        len(agnews_train)
-        != original_row_counts["AG News Train"]
-    ):
-        raise ValueError(
-            "Jumlah baris AG News Train berubah "
-            "saat preprocessing."
-        )
+    validate_row_identity_preserved(
+        dataframe_before=agnews_train_before,
+        dataframe_after=agnews_train,
+        dataset_name="AG News Train",
+    )
 
-    if (
-        len(agnews_test)
-        != original_row_counts["AG News Test"]
-    ):
-        raise ValueError(
-            "Jumlah baris AG News Test berubah "
-            "saat preprocessing."
-        )
+    validate_row_identity_preserved(
+        dataframe_before=agnews_test_before,
+        dataframe_after=agnews_test,
+        dataset_name="AG News Test",
+    )
 
-    # ========================================================
-    # VALIDASI DATASET
-    # ========================================================
+    # --------------------------------------------------------
+    # VALIDASI HASIL PREPROCESSING
+    # --------------------------------------------------------
 
     validate_preprocessed_dataset(
         dataframe=kompas,
         dataset_name="Kompas",
         text_columns=kompas_text_columns,
+        expected_row_count=(
+            original_row_counts[
+                "Kompas"
+            ]
+        ),
     )
 
     validate_preprocessed_dataset(
         dataframe=agnews_train,
         dataset_name="AG News Train",
         text_columns=agnews_text_columns,
+        expected_row_count=(
+            original_row_counts[
+                "AG News Train"
+            ]
+        ),
     )
 
     validate_preprocessed_dataset(
         dataframe=agnews_test,
         dataset_name="AG News Test",
         text_columns=agnews_text_columns,
+        expected_row_count=(
+            original_row_counts[
+                "AG News Test"
+            ]
+        ),
     )
 
-    # ========================================================
-    # MEMBUAT LAPORAN
-    # ========================================================
+    # --------------------------------------------------------
+    # MEMBUAT LAPORAN PREPROCESSING
+    # --------------------------------------------------------
 
-    report_rows = []
+    report_rows: list[dict] = []
 
     report_rows.extend(
         create_preprocessing_report(
@@ -816,9 +1201,9 @@ def main() -> None:
         report_rows
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # MEMBUAT SAMPEL BEFORE-AFTER
-    # ========================================================
+    # --------------------------------------------------------
 
     sample_dataframes = [
         create_preprocessing_samples(
@@ -843,23 +1228,9 @@ def main() -> None:
         ignore_index=True,
     )
 
-    # ========================================================
-    # MEMBUAT FOLDER OUTPUT
-    # ========================================================
-
-    PROCESSED_DATA_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    TABLES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    # ========================================================
+    # --------------------------------------------------------
     # MENYIMPAN DATASET
-    # ========================================================
+    # --------------------------------------------------------
 
     kompas.to_csv(
         KOMPAS_PREPROCESSED_PATH,
@@ -879,9 +1250,9 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # MENYIMPAN LAPORAN
-    # ========================================================
+    # --------------------------------------------------------
 
     preprocessing_report.to_csv(
         TEXT_PREPROCESSING_REPORT_PATH,
@@ -895,9 +1266,9 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # MENAMPILKAN HASIL
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("HASIL TEXT PREPROCESSING")
@@ -909,9 +1280,26 @@ def main() -> None:
         )
     )
 
-    # ========================================================
+    print("\nValidasi jumlah data:")
+
+    print(
+        f"Kompas        : "
+        f"{len(kompas):,}"
+    )
+
+    print(
+        f"AG News Train : "
+        f"{len(agnews_train):,}"
+    )
+
+    print(
+        f"AG News Test  : "
+        f"{len(agnews_test):,}"
+    )
+
+    # --------------------------------------------------------
     # OUTPUT
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("OUTPUT TEXT PREPROCESSING")

@@ -1,0 +1,2 @@
+﻿dataset,comparison_id,baseline_scenario,baseline_name,baseline_uses_yake,treatment_scenario,treatment_name,treatment_uses_yake,controlled_components,additional_component,required_models,evaluation_metrics,dashboard_chart,comparison_formula
+Kompas,K2_vs_K3_yake_ablation,K2,Title + Description,False,K3,Title + Description + Keyword YAKE,True,title_preprocessed + description_preprocessed,keyword_yake,CNN | Attention-BiLSTM,accuracy | precision_macro | recall_macro | f1_macro,grouped_bar_chart,metric_K3 - metric_K2

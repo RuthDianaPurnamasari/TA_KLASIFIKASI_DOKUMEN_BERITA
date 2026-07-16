@@ -1,20 +1,47 @@
 {
     "random_seed": 42,
+    "shuffle": true,
     "stratified_split": true,
-    "split_key": "document_id",
+    "stratify_column": "category",
+    "assignment_key": "document_id",
     "kompas": {
+        "expected_rows": 9997,
+        "scenarios": [
+            "K1",
+            "K2",
+            "K3"
+        ],
         "train": 0.8,
         "validation": 0.1,
-        "test": 0.1
+        "test": 0.1,
+        "same_assignment_for_all_scenarios": true
     },
     "ag_news": {
-        "original_train": {
+        "clean_train_rows": 119817,
+        "official_test_rows": 7600,
+        "scenarios": [
+            "A1",
+            "A2"
+        ],
+        "clean_train_partition": {
             "train": 0.9,
             "validation": 0.1
         },
-        "official_test": {
-            "test": 1.0
-        }
+        "official_test_partition": {
+            "test": 1.0,
+            "modified": false
+        },
+        "same_assignment_for_all_scenarios": true
     },
-    "important_note": "Split assignment yang sama digunakan untuk seluruh skenario dalam dataset yang sama."
+    "yake_ablation": {
+        "baseline_without_yake": "K2",
+        "treatment_with_yake": "K3",
+        "same_document_assignment": true
+    },
+    "data_leakage_control": {
+        "assignment_created_once_per_dataset": true,
+        "split_sets_are_disjoint": true,
+        "official_agnews_test_preserved": true
+    },
+    "k4_used": false
 }

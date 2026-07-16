@@ -1,7 +1,6 @@
-﻿dataset,scenario_code,scenario_name,split_analyzed,jumlah_data_train,minimum,mean,median,maximum,standard_deviation,p90,p95,p99
-Kompas,K1,Title,train,7997,3,10.99,11.0,20,2.09,14.0,14.0,16.0
-Kompas,K2,Title + Description,train,7997,13,30.34,30.0,52,4.27,36.0,37.0,41.0
-Kompas,K3,Title + Description + Keyword,train,7997,27,46.13,46.0,68,4.28,51.0,53.0,57.0
-Kompas,K4,Title + Description + Keyword + Content,train,7997,83,385.01,379.0,2034,95.98,480.0,519.0,638.04
-AG News,A1,Title,train,107883,1,7.01,7.0,19,2.18,10.0,11.0,13.0
-AG News,A2,Title + Description,train,107883,5,39.78,39.0,178,10.29,50.0,55.0,72.0
+﻿dataset,scenario_code,scenario_name,uses_yake,recommendation_group,comparison_purpose,split_analyzed,jumlah_data_train,minimum,mean,median,maximum,standard_deviation,p90,p95,p99
+Kompas,K1,Title,False,kompas_k1,title_only,train,7997,2,10.9821,11.0,20,2.1079,14.0,14.0,16.0
+Kompas,K2,Title + Description,False,kompas_k2_k3_yake_ablation,baseline_without_yake,train,7997,13,30.3416,30.0,52,4.3121,36.0,37.0,41.0
+Kompas,K3,Title + Description + Keyword YAKE,True,kompas_k2_k3_yake_ablation,treatment_with_yake,train,7997,22,44.3639,44.0,68,4.5789,50.0,52.0,56.0
+AG News,A1,Title,False,agnews_a1_a2_text_ablation,title_only,train,107835,1,6.9042,7.0,19,2.1098,10.0,11.0,12.0
+AG News,A2,Title + Description,False,agnews_a1_a2_text_ablation,title_description,train,107835,5,39.4029,39.0,178,10.2173,50.0,54.0,72.0

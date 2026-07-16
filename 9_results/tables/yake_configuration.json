@@ -1,13 +1,26 @@
 {
     "algorithm": "YAKE",
+    "library_version": "0.7.3",
     "language": "id",
-    "source_text": "title_preprocessed + description_preprocessed",
+    "source_dataset": "kompas_preprocessed.csv",
+    "source_columns": [
+        "title",
+        "description"
+    ],
+    "source_text": "original cleaned title + original cleaned description",
+    "source_uses_lowercase_text": false,
+    "source_preserves_casing": true,
+    "source_preserves_sentence_punctuation": true,
+    "content_used": false,
     "max_ngram_size": 3,
     "deduplication_limit": 0.9,
     "deduplication_function": "seqm",
     "window_size": 1,
     "top_keywords": 5,
     "keyword_separator": " | ",
-    "content_used": false,
-    "random_seed": 42
+    "model_keyword_column": "keyword_yake",
+    "model_keyword_normalization": "light preprocessing consistent with text preprocessing",
+    "score_interpretation": "lower score means more important keyword",
+    "random_seed_for_sampling": 42,
+    "expected_row_count": 9997
 }

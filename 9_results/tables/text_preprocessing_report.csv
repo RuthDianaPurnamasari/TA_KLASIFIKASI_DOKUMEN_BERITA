@@ -1,8 +1,8 @@
-﻿dataset,column,jumlah_data,avg_words_before,avg_words_after,empty_before,empty_after,new_empty_after_preprocessing
-Kompas,title,9997,10.71,10.98,0,0,0
-Kompas,description,9997,17.87,18.36,0,0,0
-Kompas,content,9997,330.37,337.81,0,0,0
-AG News Train,title,119871,6.78,7.01,0,0,0
-AG News Train,description,119871,31.06,31.78,0,0,0
-AG News Test,title,7464,6.4,6.53,0,0,0
-AG News Test,description,7464,23.73,24.03,769,791,22
+﻿dataset,column,jumlah_data,avg_words_before,avg_words_after,min_words_before,min_words_after,max_words_before,max_words_after,empty_before,empty_after,new_empty_after_preprocessing,jumlah_teks_berubah,persentase_teks_berubah
+Kompas,title,9997,10.71,10.98,2,2,20,20,0,0,0,9997,100.0
+Kompas,description,9997,17.87,18.36,7,7,40,40,0,0,0,9997,100.0
+Kompas,content,9997,330.37,337.81,41,41,1963,1983,0,0,0,9997,100.0
+AG News Train,title,119817,6.78,6.9,1,1,19,19,0,0,0,119740,99.935735
+AG News Train,description,119817,31.06,31.5,1,1,173,173,0,0,0,119817,100.0
+AG News Test,title,7600,6.76,6.88,1,1,17,17,0,0,0,7593,99.907895
+AG News Test,description,7600,30.96,31.4,4,4,129,135,0,0,0,7600,100.0

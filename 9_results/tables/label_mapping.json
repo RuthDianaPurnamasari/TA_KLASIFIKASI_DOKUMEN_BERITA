@@ -15,16 +15,22 @@
     },
     "AG News": {
         "label_to_index": {
-            "business": 0,
-            "sci_tech": 1,
-            "sports": 2,
-            "world": 3
+            "world": 0,
+            "sports": 1,
+            "business": 2,
+            "sci_tech": 3
         },
         "index_to_label": {
-            "0": "business",
-            "1": "sci_tech",
+            "0": "world",
+            "1": "sports",
+            "2": "business",
+            "3": "sci_tech"
+        },
+        "official_class_index_relation": {
+            "1": "world",
             "2": "sports",
-            "3": "world"
+            "3": "business",
+            "4": "sci_tech"
         }
     }
 }

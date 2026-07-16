@@ -4,9 +4,9 @@ import json
 import math
 import sys
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 
@@ -35,35 +35,42 @@ SPLITS_DIR = (
 
 
 # ============================================================
-# INPUT KOMPAS
+# PATH INPUT KOMPAS
 # ============================================================
 
-KOMPAS_SPLIT_PATHS = {
-    "K1": SPLITS_DIR / "kompas_k1_split.csv",
-    "K2": SPLITS_DIR / "kompas_k2_split.csv",
-    "K3": SPLITS_DIR / "kompas_k3_split.csv",
-    "K4": SPLITS_DIR / "kompas_k4_split.csv",
-}
+KOMPAS_K1_SPLIT_PATH = (
+    SPLITS_DIR
+    / "kompas_k1_split.csv"
+)
 
+KOMPAS_K2_SPLIT_PATH = (
+    SPLITS_DIR
+    / "kompas_k2_split.csv"
+)
 
-# ============================================================
-# INPUT AG NEWS
-# ============================================================
-
-AGNEWS_SPLIT_PATHS = {
-    "A1": (
-        SPLITS_DIR
-        / "agnews_a1_train_validation.csv"
-    ),
-    "A2": (
-        SPLITS_DIR
-        / "agnews_a2_train_validation.csv"
-    ),
-}
+KOMPAS_K3_SPLIT_PATH = (
+    SPLITS_DIR
+    / "kompas_k3_split.csv"
+)
 
 
 # ============================================================
-# OUTPUT
+# PATH INPUT AG NEWS
+# ============================================================
+
+AGNEWS_A1_TRAIN_VALIDATION_PATH = (
+    SPLITS_DIR
+    / "agnews_a1_train_validation.csv"
+)
+
+AGNEWS_A2_TRAIN_VALIDATION_PATH = (
+    SPLITS_DIR
+    / "agnews_a2_train_validation.csv"
+)
+
+
+# ============================================================
+# PATH OUTPUT
 # ============================================================
 
 SEQUENCE_LENGTH_REPORT_PATH = (
@@ -88,7 +95,7 @@ SEQUENCE_FIGURES_DIR = (
 
 
 # ============================================================
-# KONFIGURASI
+# KONFIGURASI ANALISIS
 # ============================================================
 
 ANALYSIS_SPLIT = "train"
@@ -99,40 +106,194 @@ PERCENTILES = {
     "p99": 0.99,
 }
 
-# Pembulatan rekomendasi agar mudah digunakan sebagai max_length
-ROUNDING_UNIT_SHORT = 10
-ROUNDING_UNIT_LONG = 25
+# Pembulatan max_length ke kelipatan 10.
+ROUNDING_UNIT = 10
 
-# Batas praktis awal untuk eksperimen pada perangkat lokal.
-# Nilai ini bukan hasil analisis, hanya pengaman agar sequence
-# yang ekstrem tidak langsung digunakan.
-PRACTICAL_CAPS = {
-    "K1": 50,
-    "K2": 100,
-    "K3": 150,
-    "K4": 600,
-    "A1": 50,
-    "A2": 200,
+
+# ============================================================
+# SPESIFIKASI SKENARIO
+# ============================================================
+
+SCENARIO_SPECS = {
+    ("Kompas", "K1"): {
+        "path": KOMPAS_K1_SPLIT_PATH,
+        "expected_dataset_value": "Kompas",
+        "expected_total_rows": 9_997,
+        "expected_train_rows": 7_997,
+        "recommendation_group": "kompas_k1",
+        "comparison_purpose": "title_only",
+    },
+    ("Kompas", "K2"): {
+        "path": KOMPAS_K2_SPLIT_PATH,
+        "expected_dataset_value": "Kompas",
+        "expected_total_rows": 9_997,
+        "expected_train_rows": 7_997,
+        "recommendation_group": (
+            "kompas_k2_k3_yake_ablation"
+        ),
+        "comparison_purpose": (
+            "baseline_without_yake"
+        ),
+    },
+    ("Kompas", "K3"): {
+        "path": KOMPAS_K3_SPLIT_PATH,
+        "expected_dataset_value": "Kompas",
+        "expected_total_rows": 9_997,
+        "expected_train_rows": 7_997,
+        "recommendation_group": (
+            "kompas_k2_k3_yake_ablation"
+        ),
+        "comparison_purpose": (
+            "treatment_with_yake"
+        ),
+    },
+    ("AG News", "A1"): {
+        "path": AGNEWS_A1_TRAIN_VALIDATION_PATH,
+        "expected_dataset_value": "AG News Train",
+        "expected_total_rows": 119_817,
+        "expected_train_rows": 107_835,
+        "recommendation_group": (
+            "agnews_a1_a2_text_ablation"
+        ),
+        "comparison_purpose": "title_only",
+    },
+    ("AG News", "A2"): {
+        "path": AGNEWS_A2_TRAIN_VALIDATION_PATH,
+        "expected_dataset_value": "AG News Train",
+        "expected_total_rows": 119_817,
+        "expected_train_rows": 107_835,
+        "recommendation_group": (
+            "agnews_a1_a2_text_ablation"
+        ),
+        "comparison_purpose": (
+            "title_description"
+        ),
+    },
 }
 
 
 # ============================================================
-# MEMBACA DATASET
+# DEFINISI KELOMPOK REKOMENDASI
+# ============================================================
+
+RECOMMENDATION_GROUPS = {
+    "kompas_k1": [
+        ("Kompas", "K1"),
+    ],
+    "kompas_k2_k3_yake_ablation": [
+        ("Kompas", "K2"),
+        ("Kompas", "K3"),
+    ],
+    "agnews_a1_a2_text_ablation": [
+        ("AG News", "A1"),
+        ("AG News", "A2"),
+    ],
+}
+
+
+# ============================================================
+# KOLOM WAJIB
+# ============================================================
+
+REQUIRED_COLUMNS = [
+    "document_id",
+    "category",
+    "dataset",
+    "scenario_code",
+    "scenario_name",
+    "text",
+    "word_count",
+    "split",
+    "uses_yake",
+    "comparison_group",
+]
+
+
+# ============================================================
+# MEMBERSIHKAN NILAI TEKS
+# ============================================================
+
+def safe_text(
+    value: Any,
+) -> str:
+    """
+    Mengubah nilai menjadi teks yang aman.
+    """
+
+    if value is None:
+        return ""
+
+    if pd.isna(value):
+        return ""
+
+    return " ".join(
+        str(value)
+        .strip()
+        .split()
+    )
+
+
+# ============================================================
+# MENGHITUNG PANJANG SEQUENCE SEMENTARA
+# ============================================================
+
+def count_sequence_words(
+    value: Any,
+) -> int:
+    """
+    Menghitung panjang sequence berdasarkan pemisahan
+    whitespace.
+
+    Token [SEP] ikut dihitung sebagai satu token.
+
+    Penghitungan ini sesuai dengan rancangan tahap
+    TextVectorization berikutnya:
+
+    standardize=None
+    split="whitespace"
+    """
+
+    text = safe_text(
+        value
+    )
+
+    if not text:
+        return 0
+
+    return len(
+        text.split()
+    )
+
+
+# ============================================================
+# MEMBACA DATASET HASIL SPLIT
 # ============================================================
 
 def load_split_dataset(
     file_path: Path,
     dataset_name: str,
     scenario_code: str,
+    expected_dataset_value: str,
+    expected_total_rows: int,
 ) -> pd.DataFrame:
     """
-    Membaca dataset hasil split dan memvalidasi kolom.
+    Membaca dan memvalidasi dataset skenario hasil split.
     """
+
+    scenario_label = (
+        f"{dataset_name} {scenario_code}"
+    )
 
     if not file_path.exists():
         raise FileNotFoundError(
-            f"Dataset {dataset_name} {scenario_code} "
+            f"Dataset {scenario_label} "
             f"tidak ditemukan:\n{file_path}"
+        )
+
+    if not file_path.is_file():
+        raise ValueError(
+            f"Path dataset {scenario_label} "
+            f"bukan file:\n{file_path}"
         )
 
     dataframe = pd.read_csv(
@@ -141,60 +302,94 @@ def load_split_dataset(
         keep_default_na=False,
     )
 
-    required_columns = [
-        "document_id",
-        "category",
-        "scenario_code",
-        "scenario_name",
-        "text",
-        "split",
-    ]
+    if dataframe.empty:
+        raise ValueError(
+            f"Dataset {scenario_label} kosong."
+        )
 
     missing_columns = [
         column
-        for column in required_columns
+        for column in REQUIRED_COLUMNS
         if column not in dataframe.columns
     ]
 
     if missing_columns:
         raise ValueError(
-            f"Kolom tidak lengkap pada "
-            f"{dataset_name} {scenario_code}: "
-            f"{missing_columns}"
+            f"Kolom pada {scenario_label} "
+            f"tidak lengkap: {missing_columns}\n"
+            f"Kolom tersedia: "
+            f"{list(dataframe.columns)}"
         )
 
-    if dataframe.empty:
+    if len(dataframe) != expected_total_rows:
         raise ValueError(
-            f"Dataset {dataset_name} "
-            f"{scenario_code} kosong."
+            f"Jumlah data {scenario_label} "
+            f"tidak sesuai.\n"
+            f"Seharusnya: {expected_total_rows:,}\n"
+            f"Ditemukan : {len(dataframe):,}"
+        )
+
+    actual_dataset_values = set(
+        dataframe["dataset"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
+
+    if actual_dataset_values != {
+        expected_dataset_value
+    }:
+        raise ValueError(
+            f"Nilai kolom dataset pada "
+            f"{scenario_label} tidak sesuai.\n"
+            f"Seharusnya: {expected_dataset_value}\n"
+            f"Ditemukan : {actual_dataset_values}"
+        )
+
+    actual_scenario_codes = set(
+        dataframe["scenario_code"]
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
+
+    if actual_scenario_codes != {
+        scenario_code
+    }:
+        raise ValueError(
+            f"Scenario code pada "
+            f"{scenario_label} tidak sesuai.\n"
+            f"Ditemukan: {actual_scenario_codes}"
+        )
+
+    duplicate_ids = int(
+        dataframe["document_id"]
+        .duplicated()
+        .sum()
+    )
+
+    if duplicate_ids > 0:
+        raise ValueError(
+            f"Dataset {scenario_label} memiliki "
+            f"{duplicate_ids:,} document_id duplikat."
+        )
+
+    empty_texts = int(
+        dataframe["text"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .eq("")
+        .sum()
+    )
+
+    if empty_texts > 0:
+        raise ValueError(
+            f"Dataset {scenario_label} memiliki "
+            f"{empty_texts:,} teks kosong."
         )
 
     return dataframe
-
-
-# ============================================================
-# MENGHITUNG PANJANG TEKS
-# ============================================================
-
-def count_sequence_words(
-    text: str,
-) -> int:
-    """
-    Menghitung panjang sequence sementara berdasarkan
-    pemisahan whitespace.
-
-    Token [SEP] ikut dihitung sebagai satu token karena
-    nantinya berfungsi sebagai penanda batas komponen teks.
-    """
-
-    normalized_text = str(text).strip()
-
-    if not normalized_text:
-        return 0
-
-    return len(
-        normalized_text.split()
-    )
 
 
 # ============================================================
@@ -205,15 +400,26 @@ def select_train_data(
     dataframe: pd.DataFrame,
     dataset_name: str,
     scenario_code: str,
+    expected_train_rows: int,
 ) -> pd.DataFrame:
     """
-    Mengambil hanya data train untuk analisis panjang sequence.
+    Mengambil hanya data train untuk menentukan
+    max_sequence_length.
+
+    Validation dan test tidak digunakan agar tidak terjadi
+    kebocoran informasi.
     """
+
+    scenario_label = (
+        f"{dataset_name} {scenario_code}"
+    )
 
     train_dataframe = (
         dataframe[
             dataframe["split"]
-            == ANALYSIS_SPLIT
+            .astype(str)
+            .str.strip()
+            .eq(ANALYSIS_SPLIT)
         ]
         .copy()
         .reset_index(drop=True)
@@ -222,90 +428,164 @@ def select_train_data(
     if train_dataframe.empty:
         raise ValueError(
             f"Data train tidak ditemukan pada "
-            f"{dataset_name} {scenario_code}."
+            f"{scenario_label}."
         )
 
-    train_dataframe["sequence_length"] = (
+    if len(train_dataframe) != expected_train_rows:
+        raise ValueError(
+            f"Jumlah data train {scenario_label} "
+            f"tidak sesuai.\n"
+            f"Seharusnya: {expected_train_rows:,}\n"
+            f"Ditemukan : {len(train_dataframe):,}"
+        )
+
+    train_dataframe[
+        "sequence_length"
+    ] = (
         train_dataframe["text"]
         .apply(count_sequence_words)
     )
 
     empty_sequences = int(
-        train_dataframe["sequence_length"]
+        train_dataframe[
+            "sequence_length"
+        ]
         .eq(0)
         .sum()
     )
 
     if empty_sequences > 0:
         raise ValueError(
-            f"Ditemukan {empty_sequences} sequence kosong "
-            f"pada {dataset_name} {scenario_code}."
+            f"Ditemukan {empty_sequences:,} "
+            f"sequence kosong pada {scenario_label}."
+        )
+
+    stored_word_count = pd.to_numeric(
+        train_dataframe["word_count"],
+        errors="coerce",
+    )
+
+    mismatched_word_count = int(
+        stored_word_count
+        .ne(
+            train_dataframe[
+                "sequence_length"
+            ]
+        )
+        .sum()
+    )
+
+    if mismatched_word_count > 0:
+        raise ValueError(
+            f"Ditemukan {mismatched_word_count:,} "
+            f"perbedaan antara word_count dan "
+            f"sequence_length pada {scenario_label}."
         )
 
     return train_dataframe
 
 
 # ============================================================
-# PEMBULATAN PANJANG SEQUENCE
+# PEMBULATAN KE ATAS
 # ============================================================
 
 def round_up(
     value: float,
-    unit: int,
+    unit: int = ROUNDING_UNIT,
 ) -> int:
     """
-    Membulatkan nilai ke atas berdasarkan unit tertentu.
+    Membulatkan nilai ke atas ke kelipatan unit.
 
     Contoh:
-    93 dengan unit 10 menjadi 100.
-    487 dengan unit 25 menjadi 500.
+    53 dengan unit 10 menjadi 60.
     """
 
+    if value <= 0:
+        raise ValueError(
+            "Nilai yang dibulatkan harus lebih dari 0."
+        )
+
+    if unit <= 0:
+        raise ValueError(
+            "Unit pembulatan harus lebih dari 0."
+        )
+
     return int(
-        math.ceil(value / unit) * unit
+        math.ceil(value / unit)
+        * unit
     )
 
 
 # ============================================================
-# MEMBUAT STATISTIK
+# MEMBUAT STATISTIK PANJANG SEQUENCE
 # ============================================================
 
 def create_sequence_statistics(
     dataframe: pd.DataFrame,
     dataset_name: str,
     scenario_code: str,
+    recommendation_group: str,
+    comparison_purpose: str,
 ) -> dict:
     """
-    Membuat statistik panjang sequence pada data train.
+    Membuat statistik distribusi panjang sequence
+    pada data train.
     """
 
     lengths = dataframe[
         "sequence_length"
     ]
 
-    scenario_name = dataframe[
-        "scenario_name"
-    ].iloc[0]
+    scenario_name = str(
+        dataframe[
+            "scenario_name"
+        ].iloc[0]
+    )
+
+    uses_yake = bool(
+        dataframe[
+            "uses_yake"
+        ].iloc[0]
+    )
 
     statistics = {
         "dataset": dataset_name,
         "scenario_code": scenario_code,
         "scenario_name": scenario_name,
+        "uses_yake": uses_yake,
+        "recommendation_group": (
+            recommendation_group
+        ),
+        "comparison_purpose": (
+            comparison_purpose
+        ),
         "split_analyzed": ANALYSIS_SPLIT,
-        "jumlah_data_train": len(dataframe),
-        "minimum": int(lengths.min()),
+        "jumlah_data_train": len(
+            dataframe
+        ),
+        "minimum": int(
+            lengths.min()
+        ),
         "mean": round(
-            float(lengths.mean()),
-            2,
+            float(
+                lengths.mean()
+            ),
+            4,
         ),
         "median": round(
-            float(lengths.median()),
-            2,
+            float(
+                lengths.median()
+            ),
+            4,
         ),
-        "maximum": int(lengths.max()),
+        "maximum": int(
+            lengths.max()
+        ),
         "standard_deviation": round(
-            float(lengths.std()),
-            2,
+            float(
+                lengths.std()
+            ),
+            4,
         ),
     }
 
@@ -318,129 +598,243 @@ def create_sequence_statistics(
                     percentile_value
                 )
             ),
-            2,
+            4,
         )
 
     return statistics
 
 
 # ============================================================
-# MEMBUAT REKOMENDASI MAX LENGTH
+# MEMBUAT REKOMENDASI PER KELOMPOK
 # ============================================================
 
-def create_length_recommendation(
-    statistics: dict,
-) -> dict:
+def create_group_recommendations(
+    statistics_lookup: dict[
+        tuple[str, str],
+        dict
+    ],
+    train_lookup: dict[
+        tuple[str, str],
+        pd.DataFrame
+    ],
+) -> list[dict]:
     """
-    Membuat rekomendasi awal max_sequence_length.
+    Membuat rekomendasi max_length.
 
-    Rekomendasi utama menggunakan P95 karena mencakup sekitar
-    95% data train tanpa harus mengikuti nilai maksimum ekstrem.
+    Skenario dalam kelompok perbandingan yang sama memakai
+    max_length yang sama.
+
+    Contoh:
+    - K2 dan K3 memakai max_length yang sama;
+    - A1 dan A2 memakai max_length yang sama.
     """
 
-    scenario_code = statistics[
-        "scenario_code"
-    ]
+    recommendation_rows: list[dict] = []
 
-    p95_value = float(
-        statistics["p95"]
+    for group_name, scenario_keys in (
+        RECOMMENDATION_GROUPS.items()
+    ):
+        missing_keys = [
+            key
+            for key in scenario_keys
+            if key not in statistics_lookup
+            or key not in train_lookup
+        ]
+
+        if missing_keys:
+            raise ValueError(
+                f"Data kelompok {group_name} "
+                f"tidak lengkap: {missing_keys}"
+            )
+
+        group_p95_values = [
+            float(
+                statistics_lookup[key][
+                    "p95"
+                ]
+            )
+            for key in scenario_keys
+        ]
+
+        group_raw_p95 = max(
+            group_p95_values
+        )
+
+        shared_max_length = round_up(
+            group_raw_p95,
+            ROUNDING_UNIT,
+        )
+
+        for dataset_name, scenario_code in (
+            scenario_keys
+        ):
+            statistics = statistics_lookup[
+                (
+                    dataset_name,
+                    scenario_code,
+                )
+            ]
+
+            train_dataframe = train_lookup[
+                (
+                    dataset_name,
+                    scenario_code,
+                )
+            ]
+
+            lengths = train_dataframe[
+                "sequence_length"
+            ]
+
+            coverage = float(
+                lengths
+                .le(shared_max_length)
+                .mean()
+                * 100
+            )
+
+            truncated_count = int(
+                lengths
+                .gt(shared_max_length)
+                .sum()
+            )
+
+            truncation_percentage = float(
+                lengths
+                .gt(shared_max_length)
+                .mean()
+                * 100
+            )
+
+            recommendation_rows.append(
+                {
+                    "dataset": dataset_name,
+                    "scenario_code": (
+                        scenario_code
+                    ),
+                    "scenario_name": (
+                        statistics[
+                            "scenario_name"
+                        ]
+                    ),
+                    "uses_yake": (
+                        statistics[
+                            "uses_yake"
+                        ]
+                    ),
+                    "recommendation_group": (
+                        group_name
+                    ),
+                    "comparison_purpose": (
+                        statistics[
+                            "comparison_purpose"
+                        ]
+                    ),
+                    "selection_basis": (
+                        "maximum P95 among scenarios "
+                        "in the same comparison group"
+                    ),
+                    "individual_raw_p95": float(
+                        statistics["p95"]
+                    ),
+                    "group_raw_p95": round(
+                        group_raw_p95,
+                        4,
+                    ),
+                    "rounding_unit": (
+                        ROUNDING_UNIT
+                    ),
+                    "recommended_max_length": (
+                        shared_max_length
+                    ),
+                    "estimated_train_coverage": round(
+                        coverage,
+                        4,
+                    ),
+                    "jumlah_train_terpotong": (
+                        truncated_count
+                    ),
+                    "persentase_train_terpotong": (
+                        round(
+                            truncation_percentage,
+                            4,
+                        )
+                    ),
+                }
+            )
+
+    return recommendation_rows
+
+
+# ============================================================
+# VALIDASI REKOMENDASI KELOMPOK
+# ============================================================
+
+def validate_shared_recommendations(
+    recommendation_dataframe: pd.DataFrame,
+) -> None:
+    """
+    Memastikan setiap kelompok perbandingan memakai
+    max_length yang sama.
+    """
+
+    for group_name, group in (
+        recommendation_dataframe.groupby(
+            "recommendation_group",
+            dropna=False,
+        )
+    ):
+        unique_lengths = (
+            group[
+                "recommended_max_length"
+            ]
+            .nunique()
+        )
+
+        if unique_lengths != 1:
+            raise ValueError(
+                f"Kelompok {group_name} memiliki "
+                "lebih dari satu recommended_max_length."
+            )
+
+    kompas_yake_group = (
+        recommendation_dataframe[
+            recommendation_dataframe[
+                "recommendation_group"
+            ]
+            == "kompas_k2_k3_yake_ablation"
+        ]
     )
 
-    rounding_unit = (
-        ROUNDING_UNIT_LONG
-        if p95_value > 200
-        else ROUNDING_UNIT_SHORT
-    )
-
-    rounded_p95 = round_up(
-        p95_value,
-        rounding_unit,
-    )
-
-    practical_cap = PRACTICAL_CAPS[
-        scenario_code
-    ]
-
-    recommended_length = min(
-        rounded_p95,
-        practical_cap,
-    )
-
-    estimated_coverage = None
-
-    return {
-        "dataset": statistics["dataset"],
-        "scenario_code": scenario_code,
-        "scenario_name": statistics[
-            "scenario_name"
-        ],
-        "basis": "P95 data train",
-        "raw_p95": p95_value,
-        "rounded_p95": rounded_p95,
-        "practical_cap": practical_cap,
-        "recommended_max_length":
-            recommended_length,
-        "estimated_coverage": estimated_coverage,
-        "note": (
-            "Rekomendasi awal. Coverage aktual dihitung "
-            "kembali setelah tokenizer difit pada data train."
-        ),
+    expected_codes = {
+        "K2",
+        "K3",
     }
 
-
-# ============================================================
-# MENGHITUNG COVERAGE REKOMENDASI
-# ============================================================
-
-def add_actual_coverage(
-    recommendation: dict,
-    train_dataframe: pd.DataFrame,
-) -> dict:
-    """
-    Menghitung persentase data train yang panjangnya tidak
-    melebihi rekomendasi max_length.
-    """
-
-    max_length = recommendation[
-        "recommended_max_length"
-    ]
-
-    coverage = (
-        train_dataframe[
-            "sequence_length"
+    actual_codes = set(
+        kompas_yake_group[
+            "scenario_code"
         ]
-        .le(max_length)
-        .mean()
-        * 100
+        .astype(str)
     )
 
-    truncated_count = int(
-        train_dataframe[
-            "sequence_length"
+    if actual_codes != expected_codes:
+        raise ValueError(
+            "Kelompok perbandingan YAKE "
+            "harus berisi K2 dan K3."
+        )
+
+    if (
+        kompas_yake_group[
+            "recommended_max_length"
         ]
-        .gt(max_length)
-        .sum()
-    )
-
-    recommendation[
-        "estimated_coverage"
-    ] = round(
-        float(coverage),
-        2,
-    )
-
-    recommendation[
-        "jumlah_train_terpotong"
-    ] = truncated_count
-
-    recommendation[
-        "persentase_train_terpotong"
-    ] = round(
-        100 - float(coverage),
-        2,
-    )
-
-    return recommendation
+        .nunique()
+        != 1
+    ):
+        raise ValueError(
+            "K2 dan K3 harus menggunakan "
+            "max_length yang sama."
+        )
 
 
 # ============================================================
@@ -452,154 +846,169 @@ def plot_sequence_distribution(
     dataset_name: str,
     scenario_code: str,
     scenario_name: str,
+    raw_p95: float,
     recommended_length: int,
     output_path: Path,
 ) -> None:
     """
-    Membuat histogram distribusi panjang sequence.
+    Membuat histogram distribusi panjang sequence
+    berdasarkan data train.
     """
 
     lengths = dataframe[
         "sequence_length"
     ]
 
-    fig, ax = plt.subplots(
+    figure, axis = plt.subplots(
         figsize=(10, 6)
     )
 
-    ax.hist(
+    axis.hist(
         lengths,
-        bins=50,
+        bins=40,
         edgecolor="black",
         alpha=0.8,
     )
 
-    ax.axvline(
+    axis.axvline(
+        raw_p95,
+        linestyle=":",
+        linewidth=2,
+        label=(
+            f"P95 skenario = "
+            f"{raw_p95:.2f}"
+        ),
+    )
+
+    axis.axvline(
         recommended_length,
         linestyle="--",
         linewidth=2,
         label=(
-            f"Rekomendasi max length = "
+            f"Recommended max length = "
             f"{recommended_length}"
         ),
     )
 
-    ax.set_title(
+    axis.set_title(
         (
-            f"Distribusi Panjang Sequence "
-            f"{dataset_name} {scenario_code}\n"
+            "Distribusi Panjang Sequence Data Train\n"
+            f"{dataset_name} {scenario_code} — "
             f"{scenario_name}"
         ),
         fontsize=13,
         pad=15,
     )
 
-    ax.set_xlabel(
-        "Jumlah Token Sementara",
+    axis.set_xlabel(
+        "Jumlah Token Berdasarkan Whitespace",
         fontsize=11,
     )
 
-    ax.set_ylabel(
-        "Frekuensi",
+    axis.set_ylabel(
+        "Frekuensi Dokumen",
         fontsize=11,
     )
 
-    ax.grid(
+    axis.grid(
         axis="y",
         linestyle="--",
         alpha=0.3,
     )
 
-    ax.legend()
+    axis.legend()
 
     plt.tight_layout()
 
-    fig.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close(fig)
+    plt.close(
+        figure
+    )
 
 
 # ============================================================
-# MEMPROSES SATU SKENARIO
+# MEMBUAT SEMUA GRAFIK
 # ============================================================
 
-def analyze_scenario(
-    file_path: Path,
-    dataset_name: str,
-    scenario_code: str,
-) -> tuple[dict, dict, pd.DataFrame]:
+def create_all_figures(
+    statistics_lookup: dict[
+        tuple[str, str],
+        dict
+    ],
+    train_lookup: dict[
+        tuple[str, str],
+        pd.DataFrame
+    ],
+    recommendation_dataframe: pd.DataFrame,
+) -> None:
     """
-    Menjalankan analisis satu skenario.
+    Membuat grafik distribusi untuk setiap skenario.
     """
 
-    dataframe = load_split_dataset(
-        file_path=file_path,
-        dataset_name=dataset_name,
-        scenario_code=scenario_code,
-    )
-
-    train_dataframe = select_train_data(
-        dataframe=dataframe,
-        dataset_name=dataset_name,
-        scenario_code=scenario_code,
-    )
-
-    statistics = create_sequence_statistics(
-        dataframe=train_dataframe,
-        dataset_name=dataset_name,
-        scenario_code=scenario_code,
-    )
-
-    recommendation = (
-        create_length_recommendation(
-            statistics
+    recommendation_lookup = {
+        (
+            str(row.dataset),
+            str(row.scenario_code),
+        ): row
+        for row in (
+            recommendation_dataframe
+            .itertuples(index=False)
         )
-    )
+    }
 
-    recommendation = add_actual_coverage(
-        recommendation=recommendation,
-        train_dataframe=train_dataframe,
-    )
-
-    safe_dataset_name = (
-        dataset_name
-        .lower()
-        .replace(" ", "_")
-    )
-
-    output_path = (
-        SEQUENCE_FIGURES_DIR
-        / (
-            f"{safe_dataset_name}_"
-            f"{scenario_code.lower()}_"
-            f"sequence_length.png"
+    for scenario_key, statistics in (
+        statistics_lookup.items()
+    ):
+        dataset_name, scenario_code = (
+            scenario_key
         )
-    )
 
-    plot_sequence_distribution(
-        dataframe=train_dataframe,
-        dataset_name=dataset_name,
-        scenario_code=scenario_code,
-        scenario_name=statistics[
-            "scenario_name"
-        ],
-        recommended_length=(
-            recommendation[
-                "recommended_max_length"
+        recommendation = (
+            recommendation_lookup[
+                scenario_key
             ]
-        ),
-        output_path=output_path,
-    )
+        )
 
-    return (
-        statistics,
-        recommendation,
-        train_dataframe,
-    )
+        safe_dataset_name = (
+            dataset_name
+            .lower()
+            .replace(" ", "_")
+        )
+
+        output_path = (
+            SEQUENCE_FIGURES_DIR
+            / (
+                f"{safe_dataset_name}_"
+                f"{scenario_code.lower()}_"
+                "sequence_length.png"
+            )
+        )
+
+        plot_sequence_distribution(
+            dataframe=(
+                train_lookup[
+                    scenario_key
+                ]
+            ),
+            dataset_name=dataset_name,
+            scenario_code=scenario_code,
+            scenario_name=statistics[
+                "scenario_name"
+            ],
+            raw_p95=float(
+                statistics["p95"]
+            ),
+            recommended_length=int(
+                recommendation
+                .recommended_max_length
+            ),
+            output_path=output_path,
+        )
 
 
 # ============================================================
@@ -607,47 +1016,129 @@ def analyze_scenario(
 # ============================================================
 
 def save_sequence_configuration(
-    recommendations: pd.DataFrame,
+    statistics_dataframe: pd.DataFrame,
+    recommendation_dataframe: pd.DataFrame,
 ) -> None:
     """
-    Menyimpan rekomendasi panjang sequence ke JSON.
+    Menyimpan konfigurasi dan rekomendasi sequence
+    agar eksperimen dapat direproduksi.
     """
 
     configuration = {
         "analysis_split": ANALYSIS_SPLIT,
+        "data_leakage_control": {
+            "train_used_for_analysis": True,
+            "validation_used_for_analysis": False,
+            "test_used_for_analysis": False,
+        },
         "length_measurement": (
-            "Whitespace-based temporary token count"
+            "whitespace-based temporary token count"
         ),
-        "selection_basis": "P95 data train",
-        "important_note": (
-            "Nilai akan diverifikasi kembali menggunakan "
-            "tokenizer yang difit hanya pada data train."
+        "future_vectorization_requirement": {
+            "standardize": None,
+            "split": "whitespace",
+            "separator_token": "[SEP]",
+            "separator_counted_as_one_token": True,
+        },
+        "percentiles": PERCENTILES,
+        "selection_basis": (
+            "Maximum P95 among scenarios in the same "
+            "comparison group, rounded upward."
         ),
+        "rounding_unit": ROUNDING_UNIT,
+        "shared_length_policy": {
+            "K1": (
+                "Independent recommendation"
+            ),
+            "K2_and_K3": (
+                "Same max_length for fair YAKE ablation"
+            ),
+            "A1_and_A2": (
+                "Same max_length for fair text "
+                "representation comparison"
+            ),
+        },
+        "k4_used": False,
+        "groups": {},
         "recommendations": {},
     }
 
-    for row in recommendations.itertuples(
-        index=False
+    for group_name, group in (
+        recommendation_dataframe.groupby(
+            "recommendation_group",
+            dropna=False,
+        )
     ):
+        configuration["groups"][
+            str(group_name)
+        ] = {
+            "scenarios": (
+                group["scenario_code"]
+                .astype(str)
+                .tolist()
+            ),
+            "datasets": (
+                group["dataset"]
+                .astype(str)
+                .tolist()
+            ),
+            "group_raw_p95": float(
+                group[
+                    "group_raw_p95"
+                ].iloc[0]
+            ),
+            "recommended_max_length": int(
+                group[
+                    "recommended_max_length"
+                ].iloc[0]
+            ),
+        }
+
+    for row in (
+        recommendation_dataframe
+        .itertuples(index=False)
+    ):
+        recommendation_key = (
+            f"{row.dataset}_{row.scenario_code}"
+            .lower()
+            .replace(" ", "_")
+        )
+
         configuration[
             "recommendations"
-        ][row.scenario_code] = {
+        ][recommendation_key] = {
             "dataset": row.dataset,
-            "scenario_name":
-                row.scenario_name,
-            "recommended_max_length":
-                int(
-                    row.recommended_max_length
-                ),
-            "estimated_train_coverage":
+            "scenario_code": (
+                row.scenario_code
+            ),
+            "scenario_name": (
+                row.scenario_name
+            ),
+            "uses_yake": bool(
+                row.uses_yake
+            ),
+            "recommendation_group": (
+                row.recommendation_group
+            ),
+            "recommended_max_length": int(
+                row.recommended_max_length
+            ),
+            "estimated_train_coverage": float(
+                row.estimated_train_coverage
+            ),
+            "train_truncation_percentage": (
                 float(
-                    row.estimated_coverage
-                ),
-            "train_truncation_percentage":
-                float(
-                    row.persentase_train_terpotong
-                ),
+                    row
+                    .persentase_train_terpotong
+                )
+            ),
         }
+
+    configuration[
+        "statistics_row_count"
+    ] = len(
+        statistics_dataframe
+    )
 
     with open(
         SEQUENCE_LENGTH_CONFIGURATION_PATH,
@@ -668,7 +1159,8 @@ def save_sequence_configuration(
 
 def main() -> None:
     """
-    Menjalankan analisis panjang sequence.
+    Menjalankan analisis panjang sequence berdasarkan
+    data train.
     """
 
     print("=" * 72)
@@ -685,78 +1177,133 @@ def main() -> None:
         exist_ok=True,
     )
 
-    statistics_rows: list[dict] = []
-    recommendation_rows: list[dict] = []
+    statistics_lookup: dict[
+        tuple[str, str],
+        dict
+    ] = {}
 
-    # ========================================================
-    # KOMPAS
-    # ========================================================
+    train_lookup: dict[
+        tuple[str, str],
+        pd.DataFrame
+    ] = {}
 
-    print("\nMenganalisis skenario Kompas...")
+    # --------------------------------------------------------
+    # MEMPROSES SELURUH SKENARIO
+    # --------------------------------------------------------
 
-    for scenario_code, file_path in (
-        KOMPAS_SPLIT_PATHS.items()
+    for (
+        dataset_name,
+        scenario_code,
+    ), specification in (
+        SCENARIO_SPECS.items()
     ):
-        (
-            statistics,
-            recommendation,
-            _,
-        ) = analyze_scenario(
-            file_path=file_path,
-            dataset_name="Kompas",
+        print(
+            f"\nMenganalisis "
+            f"{dataset_name} {scenario_code}..."
+        )
+
+        dataframe = load_split_dataset(
+            file_path=specification["path"],
+            dataset_name=dataset_name,
             scenario_code=scenario_code,
+            expected_dataset_value=(
+                specification[
+                    "expected_dataset_value"
+                ]
+            ),
+            expected_total_rows=(
+                specification[
+                    "expected_total_rows"
+                ]
+            ),
         )
 
-        statistics_rows.append(
-            statistics
-        )
-
-        recommendation_rows.append(
-            recommendation
-        )
-
-    # ========================================================
-    # AG NEWS
-    # ========================================================
-
-    print("Menganalisis skenario AG News...")
-
-    for scenario_code, file_path in (
-        AGNEWS_SPLIT_PATHS.items()
-    ):
-        (
-            statistics,
-            recommendation,
-            _,
-        ) = analyze_scenario(
-            file_path=file_path,
-            dataset_name="AG News",
+        train_dataframe = select_train_data(
+            dataframe=dataframe,
+            dataset_name=dataset_name,
             scenario_code=scenario_code,
+            expected_train_rows=(
+                specification[
+                    "expected_train_rows"
+                ]
+            ),
         )
 
-        statistics_rows.append(
-            statistics
+        statistics = create_sequence_statistics(
+            dataframe=train_dataframe,
+            dataset_name=dataset_name,
+            scenario_code=scenario_code,
+            recommendation_group=(
+                specification[
+                    "recommendation_group"
+                ]
+            ),
+            comparison_purpose=(
+                specification[
+                    "comparison_purpose"
+                ]
+            ),
         )
 
-        recommendation_rows.append(
-            recommendation
+        scenario_key = (
+            dataset_name,
+            scenario_code,
         )
 
-    # ========================================================
-    # DATAFRAME HASIL
-    # ========================================================
+        statistics_lookup[
+            scenario_key
+        ] = statistics
+
+        train_lookup[
+            scenario_key
+        ] = train_dataframe
+
+    # --------------------------------------------------------
+    # MEMBUAT DATAFRAME STATISTIK
+    # --------------------------------------------------------
 
     statistics_dataframe = pd.DataFrame(
-        statistics_rows
+        list(
+            statistics_lookup.values()
+        )
+    )
+
+    # --------------------------------------------------------
+    # MEMBUAT REKOMENDASI
+    # --------------------------------------------------------
+
+    recommendation_rows = (
+        create_group_recommendations(
+            statistics_lookup=(
+                statistics_lookup
+            ),
+            train_lookup=train_lookup,
+        )
     )
 
     recommendation_dataframe = pd.DataFrame(
         recommendation_rows
     )
 
-    # ========================================================
-    # MENYIMPAN HASIL
-    # ========================================================
+    validate_shared_recommendations(
+        recommendation_dataframe
+    )
+
+    # --------------------------------------------------------
+    # MEMBUAT GRAFIK
+    # --------------------------------------------------------
+
+    create_all_figures(
+        statistics_lookup=statistics_lookup,
+        train_lookup=train_lookup,
+        recommendation_dataframe=(
+            recommendation_dataframe
+        ),
+    )
+
+    # --------------------------------------------------------
+    # MENYIMPAN OUTPUT
+    # --------------------------------------------------------
 
     statistics_dataframe.to_csv(
         SEQUENCE_LENGTH_REPORT_PATH,
@@ -771,21 +1318,27 @@ def main() -> None:
     )
 
     save_sequence_configuration(
-        recommendation_dataframe
+        statistics_dataframe=(
+            statistics_dataframe
+        ),
+        recommendation_dataframe=(
+            recommendation_dataframe
+        ),
     )
 
-    # ========================================================
-    # MENAMPILKAN HASIL
-    # ========================================================
+    # --------------------------------------------------------
+    # MENAMPILKAN STATISTIK
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("STATISTIK PANJANG SEQUENCE DATA TRAIN")
     print("=" * 72)
 
-    display_columns = [
+    statistics_display_columns = [
         "dataset",
         "scenario_code",
         "scenario_name",
+        "uses_yake",
         "jumlah_data_train",
         "mean",
         "median",
@@ -797,11 +1350,14 @@ def main() -> None:
 
     print(
         statistics_dataframe[
-            display_columns
-        ].to_string(
-            index=False
-        )
+            statistics_display_columns
+        ]
+        .to_string(index=False)
     )
+
+    # --------------------------------------------------------
+    # MENAMPILKAN REKOMENDASI
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("REKOMENDASI MAX SEQUENCE LENGTH")
@@ -810,11 +1366,11 @@ def main() -> None:
     recommendation_display_columns = [
         "dataset",
         "scenario_code",
-        "raw_p95",
-        "rounded_p95",
-        "practical_cap",
+        "recommendation_group",
+        "individual_raw_p95",
+        "group_raw_p95",
         "recommended_max_length",
-        "estimated_coverage",
+        "estimated_train_coverage",
         "jumlah_train_terpotong",
         "persentase_train_terpotong",
     ]
@@ -822,21 +1378,82 @@ def main() -> None:
     print(
         recommendation_dataframe[
             recommendation_display_columns
-        ].to_string(
-            index=False
-        )
+        ]
+        .to_string(index=False)
     )
 
-    # ========================================================
-    # OUTPUT
-    # ========================================================
+    # --------------------------------------------------------
+    # VALIDASI PERBANDINGAN
+    # --------------------------------------------------------
+
+    print("\nValidasi panjang sequence bersama:")
+
+    k2_k3_recommendations = (
+        recommendation_dataframe[
+            recommendation_dataframe[
+                "scenario_code"
+            ]
+            .isin(
+                [
+                    "K2",
+                    "K3",
+                ]
+            )
+        ]
+    )
+
+    k2_k3_length = int(
+        k2_k3_recommendations[
+            "recommended_max_length"
+        ]
+        .iloc[0]
+    )
+
+    print(
+        "Kompas K2 dan K3 menggunakan "
+        f"max_length yang sama: "
+        f"{k2_k3_length}"
+    )
+
+    a1_a2_recommendations = (
+        recommendation_dataframe[
+            recommendation_dataframe[
+                "scenario_code"
+            ]
+            .isin(
+                [
+                    "A1",
+                    "A2",
+                ]
+            )
+        ]
+    )
+
+    a1_a2_length = int(
+        a1_a2_recommendations[
+            "recommended_max_length"
+        ]
+        .iloc[0]
+    )
+
+    print(
+        "AG News A1 dan A2 menggunakan "
+        f"max_length yang sama: "
+        f"{a1_a2_length}"
+    )
+
+    # --------------------------------------------------------
+    # INFORMASI OUTPUT
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("OUTPUT SEQUENCE LENGTH ANALYSIS")
     print("=" * 72)
 
     print("\nStatistik panjang sequence:")
-    print(SEQUENCE_LENGTH_REPORT_PATH)
+    print(
+        SEQUENCE_LENGTH_REPORT_PATH
+    )
 
     print("\nRekomendasi max sequence:")
     print(
@@ -849,7 +1466,9 @@ def main() -> None:
     )
 
     print("\nGrafik distribusi:")
-    print(SEQUENCE_FIGURES_DIR)
+    print(
+        SEQUENCE_FIGURES_DIR
+    )
 
     print(
         "\nTahap sequence length analysis selesai."

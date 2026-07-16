@@ -1,36 +1,40 @@
 {
     "separator": "[SEP]",
+    "separator_is_model_token": true,
+    "text_preprocessing": "light preprocessing",
     "kompas": {
         "K1": {
             "name": "Title",
             "components": [
                 "title_preprocessed"
-            ]
+            ],
+            "uses_yake": false,
+            "includes_content": false,
+            "yake_comparison_role": "not_applicable",
+            "comparison_group": "representation_ablation"
         },
         "K2": {
             "name": "Title + Description",
             "components": [
                 "title_preprocessed",
                 "description_preprocessed"
-            ]
+            ],
+            "uses_yake": false,
+            "includes_content": false,
+            "yake_comparison_role": "baseline_without_yake",
+            "comparison_group": "K2_vs_K3_yake_ablation"
         },
         "K3": {
-            "name": "Title + Description + Keyword",
+            "name": "Title + Description + Keyword YAKE",
             "components": [
                 "title_preprocessed",
                 "description_preprocessed",
                 "keyword_yake"
             ],
-            "keyword_method": "YAKE"
-        },
-        "K4": {
-            "name": "Weighted News Representation",
-            "weights": {
-                "title": 3,
-                "keyword": 2,
-                "description": 1,
-                "content": 1
-            }
+            "uses_yake": true,
+            "includes_content": false,
+            "yake_comparison_role": "treatment_with_yake",
+            "comparison_group": "K2_vs_K3_yake_ablation"
         }
     },
     "ag_news": {
@@ -38,14 +42,44 @@
             "name": "Title",
             "components": [
                 "title_preprocessed"
-            ]
+            ],
+            "uses_yake": false,
+            "includes_content": false,
+            "yake_comparison_role": "not_applicable",
+            "comparison_group": "agnews_text_ablation"
         },
         "A2": {
             "name": "Title + Description",
             "components": [
                 "title_preprocessed",
                 "description_preprocessed"
-            ]
+            ],
+            "uses_yake": false,
+            "includes_content": false,
+            "yake_comparison_role": "not_applicable",
+            "comparison_group": "agnews_text_ablation"
         }
+    },
+    "yake_ablation": {
+        "comparison_id": "K2_vs_K3_yake_ablation",
+        "baseline": "K2",
+        "treatment": "K3",
+        "only_difference": "keyword_yake",
+        "models": [
+            "CNN",
+            "Attention-BiLSTM"
+        ],
+        "dashboard_metrics": [
+            "accuracy",
+            "precision_macro",
+            "recall_macro",
+            "f1_macro"
+        ]
+    },
+    "random_seed": 42,
+    "expected_row_counts": {
+        "Kompas": 9997,
+        "AG News Train": 119817,
+        "AG News Test": 7600
     }
 }

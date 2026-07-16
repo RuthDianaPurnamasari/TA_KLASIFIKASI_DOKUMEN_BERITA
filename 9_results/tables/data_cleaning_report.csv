@@ -1,4 +1,4 @@
-﻿dataset,jumlah_data_awal,duplikat_dihapus,overlap_dihapus,jumlah_data_akhir,description_kosong_setelah_cleaning
-Kompas,10000,3,0,9997,0
-AG News Train,120000,129,0,119871,0
-AG News Test,7532,62,6,7464,769
+﻿dataset,label_conflict_policy,jumlah_data_awal,duplikat_dihapus,konflik_label_dihapus,overlap_dihapus,total_data_dihapus,persentase_data_dihapus,jumlah_data_akhir,title_kosong_setelah_cleaning,description_kosong_setelah_cleaning,content_kosong_setelah_cleaning
+Kompas,remove_all_conflicts,10000,3,0,0,3,0.03,9997,0,0,0.0
+AG News Train,remove_all_conflicts,120000,129,44,10,183,0.1525,119817,0,0,
+AG News Test,remove_all_conflicts,7600,0,0,0,0,0.0,7600,0,0,

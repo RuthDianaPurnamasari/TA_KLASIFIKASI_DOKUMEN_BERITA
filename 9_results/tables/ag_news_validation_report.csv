@@ -1,3 +1,3 @@
-﻿dataset,jumlah_baris,jumlah_kolom,jumlah_kategori,missing_class_index,missing_title,description_kosong,missing_category,duplikat_baris,duplikat_title
-ag_news_train,120000,6,4,0,0,0,0,64,5669
-ag_news_test,7532,6,4,0,0,831,0,61,110
+﻿dataset,jumlah_baris,jumlah_kolom,jumlah_kategori,missing_class_index,missing_title,title_kosong,description_kosong,missing_category,duplikat_exact_kelebihan,duplikat_ternormalisasi_kelebihan,kelompok_duplikat_ternormalisasi,baris_dalam_kelompok_duplikat,baris_konflik_label,kelompok_konflik_label,pasangan_overlap_train_test,dokumen_unik_overlap_train_test,duplikat_title
+ag_news_train,120000,7,4,0,0,0,0,0,64,129,129,258,44,22,10,10,5669
+ag_news_test,7600,7,4,0,0,0,0,0,0,0,0,0,0,0,10,10,32

@@ -1,50 +1,117 @@
 {
     "analysis_split": "train",
-    "length_measurement": "Whitespace-based temporary token count",
-    "selection_basis": "P95 data train",
-    "important_note": "Nilai akan diverifikasi kembali menggunakan tokenizer yang difit hanya pada data train.",
-    "recommendations": {
-        "K1": {
-            "dataset": "Kompas",
-            "scenario_name": "Title",
-            "recommended_max_length": 20,
-            "estimated_train_coverage": 100.0,
-            "train_truncation_percentage": 0.0
+    "data_leakage_control": {
+        "train_used_for_analysis": true,
+        "validation_used_for_analysis": false,
+        "test_used_for_analysis": false
+    },
+    "length_measurement": "whitespace-based temporary token count",
+    "future_vectorization_requirement": {
+        "standardize": null,
+        "split": "whitespace",
+        "separator_token": "[SEP]",
+        "separator_counted_as_one_token": true
+    },
+    "percentiles": {
+        "p90": 0.9,
+        "p95": 0.95,
+        "p99": 0.99
+    },
+    "selection_basis": "Maximum P95 among scenarios in the same comparison group, rounded upward.",
+    "rounding_unit": 10,
+    "shared_length_policy": {
+        "K1": "Independent recommendation",
+        "K2_and_K3": "Same max_length for fair YAKE ablation",
+        "A1_and_A2": "Same max_length for fair text representation comparison"
+    },
+    "k4_used": false,
+    "groups": {
+        "agnews_a1_a2_text_ablation": {
+            "scenarios": [
+                "A1",
+                "A2"
+            ],
+            "datasets": [
+                "AG News",
+                "AG News"
+            ],
+            "group_raw_p95": 54.0,
+            "recommended_max_length": 60
         },
-        "K2": {
-            "dataset": "Kompas",
-            "scenario_name": "Title + Description",
-            "recommended_max_length": 40,
-            "estimated_train_coverage": 98.72,
-            "train_truncation_percentage": 1.28
+        "kompas_k1": {
+            "scenarios": [
+                "K1"
+            ],
+            "datasets": [
+                "Kompas"
+            ],
+            "group_raw_p95": 14.0,
+            "recommended_max_length": 20
         },
-        "K3": {
-            "dataset": "Kompas",
-            "scenario_name": "Title + Description + Keyword",
-            "recommended_max_length": 60,
-            "estimated_train_coverage": 99.77,
-            "train_truncation_percentage": 0.23
-        },
-        "K4": {
-            "dataset": "Kompas",
-            "scenario_name": "Title + Description + Keyword + Content",
-            "recommended_max_length": 525,
-            "estimated_train_coverage": 95.49,
-            "train_truncation_percentage": 4.51
-        },
-        "A1": {
-            "dataset": "AG News",
-            "scenario_name": "Title",
-            "recommended_max_length": 20,
-            "estimated_train_coverage": 100.0,
-            "train_truncation_percentage": 0.0
-        },
-        "A2": {
-            "dataset": "AG News",
-            "scenario_name": "Title + Description",
-            "recommended_max_length": 60,
-            "estimated_train_coverage": 97.16,
-            "train_truncation_percentage": 2.84
+        "kompas_k2_k3_yake_ablation": {
+            "scenarios": [
+                "K2",
+                "K3"
+            ],
+            "datasets": [
+                "Kompas",
+                "Kompas"
+            ],
+            "group_raw_p95": 52.0,
+            "recommended_max_length": 60
         }
-    }
+    },
+    "recommendations": {
+        "kompas_k1": {
+            "dataset": "Kompas",
+            "scenario_code": "K1",
+            "scenario_name": "Title",
+            "uses_yake": false,
+            "recommendation_group": "kompas_k1",
+            "recommended_max_length": 20,
+            "estimated_train_coverage": 100.0,
+            "train_truncation_percentage": 0.0
+        },
+        "kompas_k2": {
+            "dataset": "Kompas",
+            "scenario_code": "K2",
+            "scenario_name": "Title + Description",
+            "uses_yake": false,
+            "recommendation_group": "kompas_k2_k3_yake_ablation",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 100.0,
+            "train_truncation_percentage": 0.0
+        },
+        "kompas_k3": {
+            "dataset": "Kompas",
+            "scenario_code": "K3",
+            "scenario_name": "Title + Description + Keyword YAKE",
+            "uses_yake": true,
+            "recommendation_group": "kompas_k2_k3_yake_ablation",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 99.9,
+            "train_truncation_percentage": 0.1
+        },
+        "ag_news_a1": {
+            "dataset": "AG News",
+            "scenario_code": "A1",
+            "scenario_name": "Title",
+            "uses_yake": false,
+            "recommendation_group": "agnews_a1_a2_text_ablation",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 100.0,
+            "train_truncation_percentage": 0.0
+        },
+        "ag_news_a2": {
+            "dataset": "AG News",
+            "scenario_code": "A2",
+            "scenario_name": "Title + Description",
+            "uses_yake": false,
+            "recommendation_group": "agnews_a1_a2_text_ablation",
+            "recommended_max_length": 60,
+            "estimated_train_coverage": 97.2096,
+            "train_truncation_percentage": 2.7904
+        }
+    },
+    "statistics_row_count": 5
 }

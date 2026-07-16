@@ -1,0 +1,365 @@
+:root {
+    --bg: #f6f8fc;
+    --surface: #ffffff;
+    --surface-soft: #f8fafc;
+    --border: #e2e8f0;
+    --text: #172033;
+    --muted: #64748b;
+    --primary: #3559e0;
+    --shadow: 0 12px 32px rgba(15, 23, 42, 0.07);
+}
+
+
+/* ============================================================
+   MAIN APPLICATION
+   ============================================================ */
+
+.stApp {
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(53, 89, 224, 0.08),
+            transparent 28%
+        ),
+        var(--bg);
+
+    color: var(--text);
+}
+
+
+.block-container {
+    max-width: 1500px;
+
+    padding-top: 1.6rem;
+    padding-bottom: 4rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+
+/* ============================================================
+   HIDE AUTOMATIC STREAMLIT SIDEBAR
+   ============================================================ */
+
+section[data-testid="stSidebar"],
+div[data-testid="collapsedControl"] {
+    display: none;
+}
+
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+h1,
+h2,
+h3 {
+    color: var(--text);
+    letter-spacing: -0.025em;
+}
+
+
+p,
+li,
+label {
+    line-height: 1.65;
+}
+
+
+hr {
+    border-color: var(--border);
+}
+
+
+/* ============================================================
+   METRIC CARDS
+   ============================================================ */
+
+div[data-testid="stMetric"] {
+    background:
+        linear-gradient(
+            145deg,
+            var(--surface),
+            var(--surface-soft)
+        );
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    padding: 18px 20px;
+
+    min-height: 138px;
+
+    box-shadow: var(--shadow);
+
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        border-color 180ms ease;
+}
+
+
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-4px);
+
+    border-color:
+        rgba(53, 89, 224, 0.38);
+
+    box-shadow:
+        0 18px 38px
+        rgba(15, 23, 42, 0.12);
+}
+
+
+div[data-testid="stMetricLabel"] {
+    font-weight: 700;
+    color: var(--muted);
+}
+
+
+div[data-testid="stMetricValue"] {
+    color: var(--text);
+}
+
+
+/* ============================================================
+   STREAMLIT CONTAINERS
+   ============================================================ */
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background:
+        rgba(255, 255, 255, 0.90);
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 8px 24px
+        rgba(15, 23, 42, 0.05);
+}
+
+
+/* ============================================================
+   TABS
+   ============================================================ */
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+
+    padding: 7px;
+
+    background:
+        rgba(226, 232, 240, 0.64);
+
+    border-radius: 15px;
+
+    overflow-x: auto;
+}
+
+
+.stTabs [data-baseweb="tab"] {
+    height: 48px;
+
+    border-radius: 11px;
+
+    padding-left: 18px;
+    padding-right: 18px;
+
+    color: var(--muted);
+
+    font-weight: 700;
+
+    white-space: nowrap;
+}
+
+
+.stTabs [aria-selected="true"] {
+    color: var(--primary);
+
+    background: var(--surface);
+
+    box-shadow:
+        0 5px 16px
+        rgba(15, 23, 42, 0.09);
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.stButton > button,
+.stFormSubmitButton > button {
+    min-height: 46px;
+
+    border: 0;
+    border-radius: 12px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #3559e0,
+            #5675ea
+        );
+
+    color: #ffffff;
+
+    font-weight: 750;
+
+    box-shadow:
+        0 8px 20px
+        rgba(53, 89, 224, 0.24);
+
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease;
+}
+
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    color: #ffffff;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 12px 26px
+        rgba(53, 89, 224, 0.32);
+}
+
+
+/* ============================================================
+   FORM
+   ============================================================ */
+
+div[data-testid="stForm"] {
+    background:
+        rgba(255, 255, 255, 0.94);
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    padding: 22px;
+
+    box-shadow: var(--shadow);
+}
+
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div,
+div[data-baseweb="select"] > div {
+    border-radius: 12px;
+}
+
+
+/* ============================================================
+   DATAFRAME
+   ============================================================ */
+
+div[data-testid="stDataFrame"] {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 7px 22px
+        rgba(15, 23, 42, 0.05);
+}
+
+
+/* ============================================================
+   PLOTLY CHART
+   ============================================================ */
+
+div[data-testid="stPlotlyChart"] {
+    background:
+        rgba(255, 255, 255, 0.96);
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    padding: 8px;
+
+    box-shadow: var(--shadow);
+}
+
+
+/* ============================================================
+   STREAMLIT IMAGE
+   ============================================================ */
+
+div[data-testid="stImage"] {
+    background:
+        rgba(255, 255, 255, 0.96);
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    padding: 10px;
+
+    box-shadow: var(--shadow);
+}
+
+
+/* ============================================================
+   ALERT AND EXPANDER
+   ============================================================ */
+
+div[data-testid="stAlert"],
+div[data-testid="stExpander"] {
+    border-radius: 14px;
+}
+
+
+div[data-testid="stExpander"] {
+    background:
+        rgba(255, 255, 255, 0.90);
+
+    border: 1px solid var(--border);
+}
+
+
+/* ============================================================
+   CAPTION
+   ============================================================ */
+
+div[data-testid="stCaptionContainer"] {
+    color: var(--muted);
+}
+
+
+/* ============================================================
+   TOOLTIP
+   ============================================================ */
+
+div[data-baseweb="tooltip"] {
+    border-radius: 10px;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+    .block-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+
+    div[data-testid="stMetric"] {
+        min-height: 118px;
+    }
+
+
+    .stTabs [data-baseweb="tab"] {
+        padding-left: 13px;
+        padding-right: 13px;
+    }
+}

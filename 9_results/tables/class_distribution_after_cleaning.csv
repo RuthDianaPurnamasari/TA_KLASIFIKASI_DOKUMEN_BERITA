@@ -1,0 +1,13 @@
+﻿dataset,class_label,jumlah_data
+Kompas,global,2500
+Kompas,bola,2500
+Kompas,money,2500
+Kompas,tekno,2497
+AG News Train,1,29979
+AG News Train,2,29974
+AG News Train,3,29947
+AG News Train,4,29917
+AG News Test,1,1900
+AG News Test,2,1900
+AG News Test,3,1900
+AG News Test,4,1900

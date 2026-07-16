@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import html
 import json
+import math
+import re
 import sys
 import time
+import unicodedata
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import yake
+
+try:
+    import yake
+except ImportError as error:
+    raise ImportError(
+        "Library YAKE belum terpasang. Jalankan:\n"
+        "pip install yake"
+    ) from error
 
 
 # ============================================================
-# MENAMBAHKAN ROOT PROJECT KE PYTHON PATH
+# ROOT PROJECT
 # ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -85,6 +97,90 @@ RANDOM_SEED = 42
 
 
 # ============================================================
+# KONFIGURASI DATASET
+# ============================================================
+
+EXPECTED_ROW_COUNT = 9_997
+
+EXPECTED_CATEGORY_COUNTS = {
+    "bola": 2_500,
+    "global": 2_500,
+    "money": 2_500,
+    "tekno": 2_497,
+}
+
+REQUIRED_COLUMNS = [
+    "document_id",
+    "title",
+    "description",
+    "title_preprocessed",
+    "description_preprocessed",
+    "category",
+]
+
+
+# ============================================================
+# REGEX PEMBERSIHAN TEKNIS
+# ============================================================
+
+URL_PATTERN = re.compile(
+    r"""
+    (?:
+        https?://\S+
+        |
+        www\.\S+
+    )
+    """,
+    flags=re.IGNORECASE | re.VERBOSE,
+)
+
+EMAIL_PATTERN = re.compile(
+    r"""
+    \b
+    [A-Za-z0-9._%+-]+
+    @
+    [A-Za-z0-9.-]+
+    \.
+    [A-Za-z]{2,}
+    \b
+    """,
+    flags=re.VERBOSE,
+)
+
+HTML_TAG_PATTERN = re.compile(
+    r"<[^>]+>"
+)
+
+CONTROL_CHARACTER_PATTERN = re.compile(
+    r"[\x00-\x1f\x7f-\x9f]"
+)
+
+MULTIPLE_WHITESPACE_PATTERN = re.compile(
+    r"\s+"
+)
+
+MALFORMED_HTML_ENTITY_PATTERN = re.compile(
+    r"(?<!&)#(?:x[0-9a-fA-F]+|\d+);",
+    flags=re.IGNORECASE,
+)
+
+
+# ============================================================
+# INFORMASI VERSI YAKE
+# ============================================================
+
+def get_yake_version() -> str:
+    """
+    Mendapatkan versi library YAKE untuk reproducibility.
+    """
+
+    try:
+        return version("yake")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+# ============================================================
 # MEMBACA DATASET
 # ============================================================
 
@@ -92,12 +188,18 @@ def load_dataset(
     file_path: Path,
 ) -> pd.DataFrame:
     """
-    Membaca dataset Kompas hasil preprocessing.
+    Membaca dataset Kompas hasil text preprocessing.
     """
 
     if not file_path.exists():
         raise FileNotFoundError(
             "Dataset Kompas preprocessed tidak ditemukan:\n"
+            f"{file_path}"
+        )
+
+    if not file_path.is_file():
+        raise ValueError(
+            "Path dataset Kompas bukan file:\n"
             f"{file_path}"
         )
 
@@ -112,26 +214,331 @@ def load_dataset(
             "Dataset Kompas preprocessed kosong."
         )
 
-    required_columns = [
-        "document_id",
-        "title_preprocessed",
-        "description_preprocessed",
-        "category",
-    ]
+    return dataframe
+
+
+# ============================================================
+# VALIDASI INPUT
+# ============================================================
+
+def validate_input_dataset(
+    dataframe: pd.DataFrame,
+) -> None:
+    """
+    Memastikan dataset input sesuai hasil tahap sebelumnya.
+    """
 
     missing_columns = [
         column
-        for column in required_columns
+        for column in REQUIRED_COLUMNS
         if column not in dataframe.columns
     ]
 
     if missing_columns:
         raise ValueError(
-            "Kolom yang dibutuhkan tidak tersedia: "
-            f"{missing_columns}"
+            "Kolom yang dibutuhkan tidak tersedia:\n"
+            f"{missing_columns}\n"
+            f"Kolom tersedia:\n{list(dataframe.columns)}"
         )
 
-    return dataframe
+    if len(dataframe) != EXPECTED_ROW_COUNT:
+        raise ValueError(
+            "Jumlah data Kompas tidak sesuai.\n"
+            f"Seharusnya: {EXPECTED_ROW_COUNT:,}\n"
+            f"Ditemukan : {len(dataframe):,}\n"
+            "Pastikan tahap data cleaning dan text "
+            "preprocessing sudah dijalankan."
+        )
+
+    if dataframe["document_id"].duplicated().any():
+        duplicate_count = int(
+            dataframe["document_id"]
+            .duplicated()
+            .sum()
+        )
+
+        raise ValueError(
+            "Ditemukan document_id duplikat sebanyak "
+            f"{duplicate_count:,}."
+        )
+
+    actual_category_counts = (
+        dataframe["category"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .value_counts()
+        .sort_index()
+        .to_dict()
+    )
+
+    expected_category_counts = dict(
+        sorted(EXPECTED_CATEGORY_COUNTS.items())
+    )
+
+    if actual_category_counts != expected_category_counts:
+        raise ValueError(
+            "Distribusi kategori Kompas tidak sesuai.\n"
+            f"Seharusnya: {expected_category_counts}\n"
+            f"Ditemukan : {actual_category_counts}"
+        )
+
+    required_text_columns = [
+        "title",
+        "description",
+        "title_preprocessed",
+        "description_preprocessed",
+    ]
+
+    for column in required_text_columns:
+        empty_count = int(
+            dataframe[column]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .eq("")
+            .sum()
+        )
+
+        if empty_count > 0:
+            raise ValueError(
+                f"Kolom {column} memiliki "
+                f"{empty_count:,} teks kosong."
+            )
+
+
+# ============================================================
+# NORMALISASI KARAKTER
+# ============================================================
+
+def repair_malformed_html_entities(
+    text: str,
+) -> str:
+    """
+    Memperbaiki entitas numerik yang kehilangan ampersand.
+
+    Contoh:
+    #39; -> &#39;
+    """
+
+    return MALFORMED_HTML_ENTITY_PATTERN.sub(
+        lambda match: f"&{match.group(0)}",
+        text,
+    )
+
+
+def normalize_apostrophes(
+    text: str,
+) -> str:
+    """
+    Menyeragamkan apostrophe Unicode.
+    """
+
+    replacements = {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u02bc": "'",
+        "\u0060": "'",
+        "\u00b4": "'",
+    }
+
+    for old_character, new_character in replacements.items():
+        text = text.replace(
+            old_character,
+            new_character,
+        )
+
+    return text
+
+
+# ============================================================
+# MENYIAPKAN TEKS SUMBER YAKE
+# ============================================================
+
+def prepare_yake_source_component(
+    value: Any,
+) -> str:
+    """
+    Melakukan pembersihan teknis minimal untuk input YAKE.
+
+    Kapitalisasi dan tanda baca tetap dipertahankan karena
+    digunakan oleh karakteristik lokal YAKE.
+    """
+
+    if value is None or pd.isna(value):
+        return ""
+
+    text = str(value).strip()
+
+    if not text:
+        return ""
+
+    text = repair_malformed_html_entities(
+        text
+    )
+
+    text = html.unescape(
+        text
+    )
+
+    text = unicodedata.normalize(
+        "NFKC",
+        text,
+    )
+
+    text = normalize_apostrophes(
+        text
+    )
+
+    text = HTML_TAG_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    text = URL_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    text = EMAIL_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    text = CONTROL_CHARACTER_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    text = MULTIPLE_WHITESPACE_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    return text.strip()
+
+
+def build_yake_source_text(
+    title: Any,
+    description: Any,
+) -> str:
+    """
+    Membentuk sumber YAKE dari title dan description asli.
+
+    Content tidak digunakan agar keyword tidak membawa
+    informasi dari skenario title + description + content.
+    """
+
+    title_text = prepare_yake_source_component(
+        title
+    )
+
+    description_text = prepare_yake_source_component(
+        description
+    )
+
+    if title_text and description_text:
+        if title_text.endswith((".", "!", "?")):
+            return (
+                f"{title_text} "
+                f"{description_text}"
+            ).strip()
+
+        return (
+            f"{title_text}. "
+            f"{description_text}"
+        ).strip()
+
+    if title_text:
+        return title_text
+
+    return description_text
+
+
+# ============================================================
+# NORMALISASI KEYWORD UNTUK INPUT MODEL
+# ============================================================
+
+def normalize_keyword_for_model(
+    keyword: Any,
+) -> str:
+    """
+    Menormalisasi keyword YAKE agar konsisten dengan hasil
+    light text preprocessing untuk CNN dan Attention-BiLSTM.
+    """
+
+    if keyword is None or pd.isna(keyword):
+        return ""
+
+    text = str(keyword).strip()
+
+    if not text:
+        return ""
+
+    text = repair_malformed_html_entities(
+        text
+    )
+
+    text = html.unescape(
+        text
+    )
+
+    text = unicodedata.normalize(
+        "NFKC",
+        text,
+    )
+
+    text = normalize_apostrophes(
+        text
+    )
+
+    text = text.casefold()
+
+    text = CONTROL_CHARACTER_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"[^\w\s']",
+        " ",
+        text,
+        flags=re.UNICODE,
+    )
+
+    text = text.replace(
+        "_",
+        " ",
+    )
+
+    text = re.sub(
+        r"(?<!\w)'|'(?!\w)",
+        " ",
+        text,
+    )
+
+    text = MULTIPLE_WHITESPACE_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    return text.strip()
+
+
+def normalize_keyword_for_display(
+    keyword: Any,
+) -> str:
+    """
+    Merapikan keyword mentah untuk kebutuhan audit.
+    """
+
+    if keyword is None or pd.isna(keyword):
+        return ""
+
+    return MULTIPLE_WHITESPACE_PATTERN.sub(
+        " ",
+        str(keyword).strip(),
+    )
 
 
 # ============================================================
@@ -140,83 +547,27 @@ def load_dataset(
 
 def create_yake_extractor() -> yake.KeywordExtractor:
     """
-    Membuat satu instance YAKE KeywordExtractor.
-
-    Instance digunakan ulang untuk seluruh artikel agar
-    proses ekstraksi lebih efisien.
+    Membuat instance YAKE KeywordExtractor.
     """
 
-    return yake.KeywordExtractor(
-        lan=YAKE_LANGUAGE,
-        n=YAKE_MAX_NGRAM_SIZE,
-        dedupLim=YAKE_DEDUPLICATION_LIMIT,
-        dedupFunc=YAKE_DEDUPLICATION_FUNCTION,
-        windowsSize=YAKE_WINDOW_SIZE,
-        top=YAKE_TOP_KEYWORDS,
-        features=None,
-    )
+    try:
+        extractor = yake.KeywordExtractor(
+            lan=YAKE_LANGUAGE,
+            n=YAKE_MAX_NGRAM_SIZE,
+            dedupLim=YAKE_DEDUPLICATION_LIMIT,
+            dedupFunc=YAKE_DEDUPLICATION_FUNCTION,
+            windowsSize=YAKE_WINDOW_SIZE,
+            top=YAKE_TOP_KEYWORDS,
+            features=None,
+        )
+    except Exception as error:
+        raise RuntimeError(
+            "Gagal membuat YAKE KeywordExtractor.\n"
+            f"Bahasa: {YAKE_LANGUAGE}\n"
+            f"Error  : {error}"
+        ) from error
 
-
-# ============================================================
-# MENGGABUNGKAN TITLE DAN DESCRIPTION
-# ============================================================
-
-def build_yake_source_text(
-    title: Any,
-    description: Any,
-) -> str:
-    """
-    Membentuk input YAKE dari:
-
-    title_preprocessed + description_preprocessed
-
-    Content tidak digunakan agar skenario 3 tidak membawa
-    informasi dari content.
-    """
-
-    title_text = (
-        ""
-        if title is None
-        else str(title).strip()
-    )
-
-    description_text = (
-        ""
-        if description is None
-        else str(description).strip()
-    )
-
-    parts = [
-        text
-        for text in [
-            title_text,
-            description_text,
-        ]
-        if text
-    ]
-
-    return " ".join(parts).strip()
-
-
-# ============================================================
-# MEMBERSIHKAN HASIL KEYWORD
-# ============================================================
-
-def normalize_keyword(
-    keyword: Any,
-) -> str:
-    """
-    Merapikan keyword hasil YAKE.
-    """
-
-    if keyword is None:
-        return ""
-
-    return " ".join(
-        str(keyword)
-        .strip()
-        .split()
-    )
+    return extractor
 
 
 # ============================================================
@@ -226,34 +577,47 @@ def normalize_keyword(
 def extract_keywords(
     text: str,
     extractor: yake.KeywordExtractor,
-) -> tuple[list[str], list[float]]:
+) -> list[dict]:
     """
-    Mengekstraksi keyword dan score YAKE.
+    Mengekstraksi keyword dan skor YAKE.
 
-    Score YAKE yang lebih kecil menunjukkan keyword yang
-    dianggap lebih penting.
+    Skor yang lebih kecil menunjukkan keyword lebih penting.
     """
 
     if not text.strip():
-        return [], []
+        return []
 
-    raw_keywords = extractor.extract_keywords(
+    raw_results = extractor.extract_keywords(
         text
     )
 
-    keywords: list[str] = []
-    scores: list[float] = []
+    raw_results = sorted(
+        raw_results,
+        key=lambda item: float(item[1]),
+    )
+
+    keyword_records: list[dict] = []
+
     seen_keywords: set[str] = set()
 
-    for keyword, score in raw_keywords:
-        normalized_keyword = normalize_keyword(
-            keyword
+    for raw_keyword, raw_score in raw_results:
+        display_keyword = normalize_keyword_for_display(
+            raw_keyword
         )
 
-        if not normalized_keyword:
+        model_keyword = normalize_keyword_for_model(
+            raw_keyword
+        )
+
+        score = float(raw_score)
+
+        if not display_keyword or not model_keyword:
             continue
 
-        duplicate_key = normalized_keyword.lower()
+        if not math.isfinite(score):
+            continue
+
+        duplicate_key = model_keyword.casefold()
 
         if duplicate_key in seen_keywords:
             continue
@@ -262,22 +626,22 @@ def extract_keywords(
             duplicate_key
         )
 
-        keywords.append(
-            normalized_keyword
+        keyword_records.append(
+            {
+                "keyword_raw": display_keyword,
+                "keyword_model": model_keyword,
+                "score": round(score, 10),
+            }
         )
 
-        scores.append(
-            round(float(score), 8)
-        )
-
-        if len(keywords) >= YAKE_TOP_KEYWORDS:
+        if len(keyword_records) >= YAKE_TOP_KEYWORDS:
             break
 
-    return keywords, scores
+    return keyword_records
 
 
 # ============================================================
-# MEMPROSES SELURUH DATASET
+# MENERAPKAN YAKE KE DATASET
 # ============================================================
 
 def apply_yake_to_dataset(
@@ -285,101 +649,164 @@ def apply_yake_to_dataset(
     extractor: yake.KeywordExtractor,
 ) -> pd.DataFrame:
     """
-    Menerapkan YAKE ke seluruh artikel Kompas.
+    Menerapkan YAKE pada seluruh artikel Kompas.
     """
 
-    dataframe = dataframe.copy()
+    result = dataframe.copy()
 
     source_texts: list[str] = []
-    keyword_texts: list[str] = []
-    keyword_lists: list[str] = []
-    keyword_scores: list[str] = []
+    keyword_model_texts: list[str] = []
+    keyword_display_texts: list[str] = []
+    keyword_raw_display_texts: list[str] = []
+    keyword_scores_json: list[str] = []
+    keyword_pairs_json: list[str] = []
     keyword_counts: list[int] = []
 
-    total_rows = len(dataframe)
+    total_rows = len(result)
 
     start_time = time.perf_counter()
 
     for row_number, row in enumerate(
-        dataframe.itertuples(index=False),
+        result.itertuples(index=False),
         start=1,
     ):
+        document_id = getattr(
+            row,
+            "document_id",
+        )
+
         source_text = build_yake_source_text(
-            getattr(
+            title=getattr(row, "title"),
+            description=getattr(
                 row,
-                "title_preprocessed",
-            ),
-            getattr(
-                row,
-                "description_preprocessed",
+                "description",
             ),
         )
 
-        keywords, scores = extract_keywords(
-            text=source_text,
-            extractor=extractor,
-        )
+        try:
+            keyword_records = extract_keywords(
+                text=source_text,
+                extractor=extractor,
+            )
+        except Exception as error:
+            raise RuntimeError(
+                "Ekstraksi YAKE gagal.\n"
+                f"Nomor proses : {row_number:,}\n"
+                f"Document ID  : {document_id}\n"
+                f"Error        : {error}"
+            ) from error
+
+        raw_keywords = [
+            record["keyword_raw"]
+            for record in keyword_records
+        ]
+
+        model_keywords = [
+            record["keyword_model"]
+            for record in keyword_records
+        ]
+
+        scores = [
+            record["score"]
+            for record in keyword_records
+        ]
 
         source_texts.append(
             source_text
         )
 
-        keyword_texts.append(
-            " ".join(keywords)
+        # Kolom yang digunakan untuk skenario model.
+        keyword_model_texts.append(
+            " ".join(model_keywords)
         )
 
-        keyword_lists.append(
-            KEYWORD_SEPARATOR.join(keywords)
+        # Tampilan phrase yang sudah dinormalisasi.
+        keyword_display_texts.append(
+            KEYWORD_SEPARATOR.join(
+                model_keywords
+            )
         )
 
-        keyword_scores.append(
+        # Tampilan asli hasil YAKE untuk audit.
+        keyword_raw_display_texts.append(
+            KEYWORD_SEPARATOR.join(
+                raw_keywords
+            )
+        )
+
+        keyword_scores_json.append(
             json.dumps(
                 scores,
                 ensure_ascii=False,
             )
         )
 
+        keyword_pairs_json.append(
+            json.dumps(
+                keyword_records,
+                ensure_ascii=False,
+            )
+        )
+
         keyword_counts.append(
-            len(keywords)
+            len(keyword_records)
         )
 
         if (
             row_number % PROGRESS_INTERVAL == 0
             or row_number == total_rows
         ):
-            elapsed_time = (
+            elapsed = (
                 time.perf_counter()
                 - start_time
             )
 
-            print(
-                f"Progress: "
-                f"{row_number:,}/{total_rows:,} "
-                f"artikel | "
-                f"{elapsed_time:.2f} detik"
+            average_time = (
+                elapsed / row_number
             )
 
-    dataframe["yake_source_text"] = (
+            estimated_remaining = (
+                average_time
+                * (total_rows - row_number)
+            )
+
+            print(
+                f"Progress: "
+                f"{row_number:,}/{total_rows:,} artikel | "
+                f"{elapsed:.2f} detik | "
+                f"estimasi sisa "
+                f"{estimated_remaining:.2f} detik"
+            )
+
+    result["yake_source_text"] = (
         source_texts
     )
 
-    dataframe["keyword_yake"] = (
-        keyword_texts
+    result["keyword_yake"] = (
+        keyword_model_texts
     )
 
-    dataframe["keyword_yake_display"] = (
-        keyword_lists
+    result["keyword_yake_display"] = (
+        keyword_display_texts
     )
 
-    dataframe["keyword_yake_scores"] = (
-        keyword_scores
+    result["keyword_yake_raw_display"] = (
+        keyword_raw_display_texts
     )
 
-    dataframe["keyword_yake_count"] = (
+    result["keyword_yake_scores"] = (
+        keyword_scores_json
+    )
+
+    result["keyword_yake_pairs_json"] = (
+        keyword_pairs_json
+    )
+
+    result["keyword_yake_count"] = (
         keyword_counts
     )
 
-    return dataframe
+    return result
 
 
 # ============================================================
@@ -387,43 +814,62 @@ def apply_yake_to_dataset(
 # ============================================================
 
 def validate_yake_output(
-    dataframe: pd.DataFrame,
+    dataframe_before: pd.DataFrame,
+    dataframe_after: pd.DataFrame,
 ) -> None:
     """
-    Memastikan hasil ekstraksi YAKE dapat digunakan.
+    Memastikan hasil YAKE lengkap dan konsisten.
     """
 
-    required_columns = [
+    if len(dataframe_before) != len(dataframe_after):
+        raise ValueError(
+            "Jumlah data berubah selama ekstraksi YAKE.\n"
+            f"Sebelum: {len(dataframe_before):,}\n"
+            f"Sesudah: {len(dataframe_after):,}"
+        )
+
+    required_output_columns = [
         "yake_source_text",
         "keyword_yake",
         "keyword_yake_display",
+        "keyword_yake_raw_display",
         "keyword_yake_scores",
+        "keyword_yake_pairs_json",
         "keyword_yake_count",
     ]
 
     missing_columns = [
         column
-        for column in required_columns
-        if column not in dataframe.columns
+        for column in required_output_columns
+        if column not in dataframe_after.columns
     ]
 
     if missing_columns:
         raise ValueError(
-            "Kolom hasil YAKE tidak lengkap: "
+            "Kolom hasil YAKE tidak lengkap:\n"
             f"{missing_columns}"
         )
 
-    empty_source_count = int(
-        dataframe["yake_source_text"]
-        .fillna("")
+    before_ids = (
+        dataframe_before["document_id"]
         .astype(str)
-        .str.strip()
-        .eq("")
-        .sum()
+        .reset_index(drop=True)
     )
 
-    empty_keyword_count = int(
-        dataframe["keyword_yake"]
+    after_ids = (
+        dataframe_after["document_id"]
+        .astype(str)
+        .reset_index(drop=True)
+    )
+
+    if not before_ids.equals(after_ids):
+        raise ValueError(
+            "Urutan atau identitas dokumen berubah "
+            "selama ekstraksi YAKE."
+        )
+
+    empty_source_count = int(
+        dataframe_after["yake_source_text"]
         .fillna("")
         .astype(str)
         .str.strip()
@@ -433,37 +879,151 @@ def validate_yake_output(
 
     if empty_source_count > 0:
         raise ValueError(
-            f"Ditemukan {empty_source_count} "
-            "input YAKE kosong."
+            f"Ditemukan {empty_source_count:,} "
+            "sumber teks YAKE kosong."
         )
 
+    empty_keyword_count = int(
+        dataframe_after["keyword_yake"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .eq("")
+        .sum()
+    )
+
     if empty_keyword_count > 0:
-        print(
-            f"Peringatan: terdapat "
-            f"{empty_keyword_count} artikel "
-            f"tanpa keyword YAKE."
+        raise ValueError(
+            f"Ditemukan {empty_keyword_count:,} "
+            "artikel tanpa keyword YAKE."
         )
+
+    invalid_count_mask = (
+        dataframe_after["keyword_yake_count"]
+        .lt(1)
+        |
+        dataframe_after["keyword_yake_count"]
+        .gt(YAKE_TOP_KEYWORDS)
+    )
+
+    if invalid_count_mask.any():
+        invalid_count = int(
+            invalid_count_mask.sum()
+        )
+
+        raise ValueError(
+            f"Ditemukan {invalid_count:,} artikel "
+            "dengan jumlah keyword tidak valid."
+        )
+
+    for row_number, row in enumerate(
+        dataframe_after.itertuples(index=False),
+        start=1,
+    ):
+        keyword_count = int(
+            getattr(
+                row,
+                "keyword_yake_count",
+            )
+        )
+
+        try:
+            scores = json.loads(
+                getattr(
+                    row,
+                    "keyword_yake_scores",
+                )
+            )
+
+            pairs = json.loads(
+                getattr(
+                    row,
+                    "keyword_yake_pairs_json",
+                )
+            )
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "JSON hasil YAKE tidak valid pada "
+                f"baris {row_number:,}."
+            ) from error
+
+        if len(scores) != keyword_count:
+            raise ValueError(
+                "Jumlah skor tidak sama dengan jumlah "
+                f"keyword pada baris {row_number:,}."
+            )
+
+        if len(pairs) != keyword_count:
+            raise ValueError(
+                "Jumlah pasangan keyword-score tidak sama "
+                f"pada baris {row_number:,}."
+            )
+
+        if any(
+            not math.isfinite(float(score))
+            for score in scores
+        ):
+            raise ValueError(
+                "Ditemukan skor YAKE tidak valid pada "
+                f"baris {row_number:,}."
+            )
 
 
 # ============================================================
 # MEMBUAT LAPORAN YAKE
 # ============================================================
 
+def get_best_keyword_score(
+    value: str,
+) -> float | None:
+    """
+    Mengambil skor keyword terbaik dari JSON score.
+    """
+
+    try:
+        scores = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    if not scores:
+        return None
+
+    return float(
+        min(scores)
+    )
+
+
 def create_yake_report(
     dataframe: pd.DataFrame,
     elapsed_seconds: float,
 ) -> pd.DataFrame:
     """
-    Membuat laporan statistik ekstraksi YAKE.
+    Membuat statistik hasil ekstraksi YAKE.
     """
+
+    data = dataframe.copy()
+
+    data["_best_keyword_score"] = (
+        data["keyword_yake_scores"]
+        .apply(get_best_keyword_score)
+    )
 
     records: list[dict] = []
 
-    for category, group in dataframe.groupby(
-        "category",
-        dropna=False,
-    ):
-        empty_keywords = int(
+    grouped_data = list(
+        data.groupby(
+            "category",
+            dropna=False,
+            sort=True,
+        )
+    )
+
+    grouped_data.append(
+        ("ALL", data)
+    )
+
+    for category, group in grouped_data:
+        empty_keyword_count = int(
             group["keyword_yake"]
             .fillna("")
             .astype(str)
@@ -472,85 +1032,68 @@ def create_yake_report(
             .sum()
         )
 
-        records.append(
-            {
-                "dataset": "Kompas",
-                "category": category,
-                "jumlah_data": len(group),
-                "avg_keyword_count": round(
-                    float(
-                        group[
-                            "keyword_yake_count"
-                        ].mean()
-                    ),
-                    2,
-                ),
-                "minimum_keyword_count": int(
-                    group[
-                        "keyword_yake_count"
-                    ].min()
-                ),
-                "maximum_keyword_count": int(
-                    group[
-                        "keyword_yake_count"
-                    ].max()
-                ),
-                "artikel_tanpa_keyword":
-                    empty_keywords,
-            }
-        )
-
-    overall_empty_keywords = int(
-        dataframe["keyword_yake"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-        .eq("")
-        .sum()
-    )
-
-    records.append(
-        {
+        record = {
             "dataset": "Kompas",
-            "category": "ALL",
-            "jumlah_data": len(dataframe),
+            "category": category,
+            "jumlah_data": len(group),
             "avg_keyword_count": round(
                 float(
-                    dataframe[
+                    group[
                         "keyword_yake_count"
                     ].mean()
                 ),
-                2,
+                4,
             ),
             "minimum_keyword_count": int(
-                dataframe[
+                group[
                     "keyword_yake_count"
                 ].min()
             ),
             "maximum_keyword_count": int(
-                dataframe[
+                group[
                     "keyword_yake_count"
                 ].max()
             ),
-            "artikel_tanpa_keyword":
-                overall_empty_keywords,
-            "processing_time_seconds": round(
-                elapsed_seconds,
-                2,
+            "avg_best_keyword_score": round(
+                float(
+                    group[
+                        "_best_keyword_score"
+                    ].mean()
+                ),
+                8,
             ),
-            "average_seconds_per_article": round(
-                elapsed_seconds
-                / len(dataframe),
-                6,
+            "artikel_tanpa_keyword": (
+                empty_keyword_count
             ),
         }
-    )
 
-    return pd.DataFrame(records)
+        if category == "ALL":
+            record[
+                "processing_time_seconds"
+            ] = round(
+                elapsed_seconds,
+                4,
+            )
+
+            record[
+                "average_seconds_per_article"
+            ] = round(
+                elapsed_seconds
+                / len(dataframe),
+                8,
+            )
+
+        records.append(
+            record
+        )
+
+    return pd.DataFrame(
+        records
+    )
 
 
 # ============================================================
-# MEMBUAT SAMPEL HASIL YAKE
+# MEMBUAT SAMPEL HASIL
 # ============================================================
 
 def create_yake_samples(
@@ -558,7 +1101,7 @@ def create_yake_samples(
     samples_per_category: int = 5,
 ) -> pd.DataFrame:
     """
-    Mengambil contoh hasil keyword per kategori.
+    Mengambil sampel keyword per kategori.
     """
 
     samples: list[pd.DataFrame] = []
@@ -566,6 +1109,7 @@ def create_yake_samples(
     for category, group in dataframe.groupby(
         "category",
         dropna=False,
+        sort=True,
     ):
         sample_size = min(
             samples_per_category,
@@ -584,7 +1128,9 @@ def create_yake_samples(
                     "title",
                     "description",
                     "yake_source_text",
+                    "keyword_yake_raw_display",
                     "keyword_yake_display",
+                    "keyword_yake",
                     "keyword_yake_scores",
                     "keyword_yake_count",
                 ]
@@ -608,31 +1154,62 @@ def create_yake_samples(
 
 def save_yake_configuration() -> None:
     """
-    Menyimpan parameter YAKE agar eksperimen reproducible.
+    Menyimpan konfigurasi YAKE agar eksperimen reproducible.
     """
 
     configuration = {
         "algorithm": "YAKE",
+        "library_version": get_yake_version(),
         "language": YAKE_LANGUAGE,
-        "source_text": (
-            "title_preprocessed + "
-            "description_preprocessed"
+        "source_dataset": (
+            "kompas_preprocessed.csv"
         ),
-        "max_ngram_size":
-            YAKE_MAX_NGRAM_SIZE,
-        "deduplication_limit":
-            YAKE_DEDUPLICATION_LIMIT,
-        "deduplication_function":
-            YAKE_DEDUPLICATION_FUNCTION,
-        "window_size":
-            YAKE_WINDOW_SIZE,
-        "top_keywords":
-            YAKE_TOP_KEYWORDS,
-        "keyword_separator":
-            KEYWORD_SEPARATOR,
+        "source_columns": [
+            "title",
+            "description",
+        ],
+        "source_text": (
+            "original cleaned title + "
+            "original cleaned description"
+        ),
+        "source_uses_lowercase_text": False,
+        "source_preserves_casing": True,
+        "source_preserves_sentence_punctuation": True,
         "content_used": False,
-        "random_seed":
-            RANDOM_SEED,
+        "max_ngram_size": (
+            YAKE_MAX_NGRAM_SIZE
+        ),
+        "deduplication_limit": (
+            YAKE_DEDUPLICATION_LIMIT
+        ),
+        "deduplication_function": (
+            YAKE_DEDUPLICATION_FUNCTION
+        ),
+        "window_size": (
+            YAKE_WINDOW_SIZE
+        ),
+        "top_keywords": (
+            YAKE_TOP_KEYWORDS
+        ),
+        "keyword_separator": (
+            KEYWORD_SEPARATOR
+        ),
+        "model_keyword_column": (
+            "keyword_yake"
+        ),
+        "model_keyword_normalization": (
+            "light preprocessing consistent "
+            "with text preprocessing"
+        ),
+        "score_interpretation": (
+            "lower score means more important keyword"
+        ),
+        "random_seed_for_sampling": (
+            RANDOM_SEED
+        ),
+        "expected_row_count": (
+            EXPECTED_ROW_COUNT
+        ),
     }
 
     with open(
@@ -663,89 +1240,40 @@ def main() -> None:
 
     print("\nKonfigurasi YAKE:")
     print(
-        f"Bahasa               : "
+        f"Versi library         : "
+        f"{get_yake_version()}"
+    )
+    print(
+        f"Bahasa                : "
         f"{YAKE_LANGUAGE}"
     )
     print(
-        f"Maksimum n-gram      : "
+        f"Maksimum n-gram       : "
         f"{YAKE_MAX_NGRAM_SIZE}"
     )
     print(
-        f"Jumlah keyword       : "
+        f"Jumlah keyword        : "
         f"{YAKE_TOP_KEYWORDS}"
     )
     print(
-        f"Deduplication limit  : "
+        f"Deduplication limit   : "
         f"{YAKE_DEDUPLICATION_LIMIT}"
     )
     print(
-        f"Sumber teks          : "
-        f"title_preprocessed + "
-        f"description_preprocessed"
+        f"Deduplication function: "
+        f"{YAKE_DEDUPLICATION_FUNCTION}"
     )
-
-    # ========================================================
-    # MEMUAT DATASET
-    # ========================================================
-
-    kompas = load_dataset(
-        KOMPAS_PREPROCESSED_PATH
-    )
-
     print(
-        f"\nJumlah artikel Kompas: "
-        f"{len(kompas):,}"
+        f"Window size           : "
+        f"{YAKE_WINDOW_SIZE}"
     )
-
-    # ========================================================
-    # MEMBUAT EXTRACTOR
-    # ========================================================
-
-    extractor = create_yake_extractor()
-
-    # ========================================================
-    # EKSTRAKSI KEYWORD
-    # ========================================================
-
-    start_time = time.perf_counter()
-
-    kompas_with_keywords = (
-        apply_yake_to_dataset(
-            dataframe=kompas,
-            extractor=extractor,
-        )
+    print(
+        "Sumber teks           : "
+        "title asli + description asli"
     )
-
-    elapsed_seconds = (
-        time.perf_counter()
-        - start_time
+    print(
+        "Content digunakan     : Tidak"
     )
-
-    # ========================================================
-    # VALIDASI
-    # ========================================================
-
-    validate_yake_output(
-        kompas_with_keywords
-    )
-
-    # ========================================================
-    # LAPORAN
-    # ========================================================
-
-    yake_report = create_yake_report(
-        dataframe=kompas_with_keywords,
-        elapsed_seconds=elapsed_seconds,
-    )
-
-    yake_samples = create_yake_samples(
-        dataframe=kompas_with_keywords,
-        samples_per_category=5,
-    )
-
-    # ========================================================
-    # MEMBUAT FOLDER
-    # ========================================================
 
     PROCESSED_DATA_DIR.mkdir(
         parents=True,
@@ -757,9 +1285,83 @@ def main() -> None:
         exist_ok=True,
     )
 
-    # ========================================================
+    # --------------------------------------------------------
+    # MEMUAT DAN MEMVALIDASI DATA
+    # --------------------------------------------------------
+
+    kompas = load_dataset(
+        KOMPAS_PREPROCESSED_PATH
+    )
+
+    validate_input_dataset(
+        kompas
+    )
+
+    kompas_before = kompas.copy()
+
+    print(
+        f"\nJumlah artikel Kompas: "
+        f"{len(kompas):,}"
+    )
+
+    print("\nDistribusi kategori:")
+
+    print(
+        kompas["category"]
+        .value_counts()
+        .to_string()
+    )
+
+    # --------------------------------------------------------
+    # MEMBUAT EXTRACTOR
+    # --------------------------------------------------------
+
+    extractor = create_yake_extractor()
+
+    # --------------------------------------------------------
+    # EKSTRAKSI KEYWORD
+    # --------------------------------------------------------
+
+    print("\nMemulai ekstraksi keyword YAKE...")
+
+    start_time = time.perf_counter()
+
+    kompas_with_keywords = apply_yake_to_dataset(
+        dataframe=kompas,
+        extractor=extractor,
+    )
+
+    elapsed_seconds = (
+        time.perf_counter()
+        - start_time
+    )
+
+    # --------------------------------------------------------
+    # VALIDASI HASIL
+    # --------------------------------------------------------
+
+    validate_yake_output(
+        dataframe_before=kompas_before,
+        dataframe_after=kompas_with_keywords,
+    )
+
+    # --------------------------------------------------------
+    # LAPORAN
+    # --------------------------------------------------------
+
+    yake_report = create_yake_report(
+        dataframe=kompas_with_keywords,
+        elapsed_seconds=elapsed_seconds,
+    )
+
+    yake_samples = create_yake_samples(
+        dataframe=kompas_with_keywords,
+        samples_per_category=5,
+    )
+
+    # --------------------------------------------------------
     # MENYIMPAN OUTPUT
-    # ========================================================
+    # --------------------------------------------------------
 
     kompas_with_keywords.to_csv(
         KOMPAS_WITH_KEYWORDS_PATH,
@@ -781,9 +1383,9 @@ def main() -> None:
 
     save_yake_configuration()
 
-    # ========================================================
+    # --------------------------------------------------------
     # MENAMPILKAN HASIL
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("HASIL YAKE KEYWORD EXTRACTION")
@@ -808,6 +1410,7 @@ def main() -> None:
                 "document_id",
                 "category",
                 "title",
+                "keyword_yake_raw_display",
                 "keyword_yake_display",
             ]
         ]
@@ -815,9 +1418,26 @@ def main() -> None:
         .to_string(index=False)
     )
 
-    # ========================================================
+    print("\nValidasi hasil:")
+
+    print(
+        f"Jumlah data akhir     : "
+        f"{len(kompas_with_keywords):,}"
+    )
+
+    print(
+        "Artikel tanpa keyword: "
+        f"{int(kompas_with_keywords['keyword_yake_count'].eq(0).sum()):,}"
+    )
+
+    print(
+        "Rata-rata keyword     : "
+        f"{kompas_with_keywords['keyword_yake_count'].mean():.2f}"
+    )
+
+    # --------------------------------------------------------
     # INFORMASI OUTPUT
-    # ========================================================
+    # --------------------------------------------------------
 
     print("\n" + "=" * 72)
     print("OUTPUT YAKE KEYWORD EXTRACTION")

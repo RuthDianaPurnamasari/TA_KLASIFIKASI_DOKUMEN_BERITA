@@ -1,7 +1,7 @@
 {
     "framework": "TensorFlow/Keras",
     "vectorizer": "TextVectorization",
-    "adapt_policy": "Vocabulary dibentuk hanya dari data train pada masing-masing skenario.",
+    "adapt_policy": "Vocabulary dibentuk hanya dari data train pada skenario adaptasi setiap kelompok, lalu digunakan bersama oleh seluruh skenario dalam kelompok.",
     "standardize": null,
     "split": "whitespace",
     "output_mode": "int",
@@ -11,20 +11,86 @@
         "K1": 20,
         "K2": 60,
         "K3": 60,
-        "K4": 525,
-        "A1": 20,
+        "A1": 60,
         "A2": 60
     },
-    "max_vocabulary_sizes": {
-        "K1": 30000,
-        "K2": 40000,
-        "K3": 50000,
-        "K4": 80000,
-        "A1": 50000,
-        "A2": 80000
+    "vocabulary_groups": {
+        "kompas_shared": {
+            "dataset": "Kompas",
+            "adapt_scenario": "K2",
+            "scenario_codes": [
+                "K1",
+                "K2",
+                "K3"
+            ],
+            "max_tokens": 50000,
+            "reason": "Vocabulary dibentuk dari Kompas K2 train dan digunakan bersama oleh K1, K2, dan K3."
+        },
+        "agnews_shared": {
+            "dataset": "AG News",
+            "adapt_scenario": "A2",
+            "scenario_codes": [
+                "A1",
+                "A2"
+            ],
+            "max_tokens": 80000,
+            "reason": "Vocabulary dibentuk dari AG News A2 train dan digunakan bersama oleh A1 dan A2."
+        }
+    },
+    "scenario_to_group": {
+        "K1": "kompas_shared",
+        "K2": "kompas_shared",
+        "K3": "kompas_shared",
+        "A1": "agnews_shared",
+        "A2": "agnews_shared"
+    },
+    "group_artifacts": {
+        "kompas_shared": {
+            "dataset": "Kompas",
+            "adapt_scenario": "K2",
+            "adapt_split": "train",
+            "scenario_codes": [
+                "K1",
+                "K2",
+                "K3"
+            ],
+            "max_tokens": 50000,
+            "actual_vocabulary_size": 15492,
+            "separator_index": 2,
+            "vocabulary_sha256": "835bf7e343c424a48d6647ddca25e086fda29fa1f5cff82aca0f92f9a684bd5e",
+            "vocabulary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\_shared_vocabularies\\kompas_shared\\vocabulary.txt"
+        },
+        "agnews_shared": {
+            "dataset": "AG News",
+            "adapt_scenario": "A2",
+            "adapt_split": "train",
+            "scenario_codes": [
+                "A1",
+                "A2"
+            ],
+            "max_tokens": 80000,
+            "actual_vocabulary_size": 65049,
+            "separator_index": 4,
+            "vocabulary_sha256": "26a96b97aa8277b641d86dd873b7644749a918685553be58b8aa7fd2cc058aaf",
+            "vocabulary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\_shared_vocabularies\\agnews_shared\\vocabulary.txt"
+        }
     },
     "special_indices": {
         "padding": 0,
         "oov": 1
+    },
+    "separator_token": "[SEP]",
+    "k4_used": false,
+    "fair_comparison_policy": {
+        "K2_vs_K3": {
+            "same_split": true,
+            "same_max_sequence_length": true,
+            "same_vocabulary_and_token_ids": true
+        },
+        "A1_vs_A2": {
+            "same_split": true,
+            "same_max_sequence_length": true,
+            "same_vocabulary_and_token_ids": true
+        }
     }
 }

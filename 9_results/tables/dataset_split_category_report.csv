@@ -1,73 +1,61 @@
-﻿dataset,scenario_code,split,category,jumlah_data,persentase_dalam_split
-Kompas,K1,test,bola,250,25.0
-Kompas,K1,test,global,250,25.0
-Kompas,K1,test,money,250,25.0
-Kompas,K1,test,tekno,250,25.0
-Kompas,K1,train,bola,2000,25.01
-Kompas,K1,train,global,2000,25.01
-Kompas,K1,train,money,2000,25.01
-Kompas,K1,train,tekno,1997,24.97
-Kompas,K1,validation,bola,250,25.0
-Kompas,K1,validation,global,250,25.0
-Kompas,K1,validation,money,250,25.0
-Kompas,K1,validation,tekno,250,25.0
-Kompas,K2,test,bola,250,25.0
-Kompas,K2,test,global,250,25.0
-Kompas,K2,test,money,250,25.0
-Kompas,K2,test,tekno,250,25.0
-Kompas,K2,train,bola,2000,25.01
-Kompas,K2,train,global,2000,25.01
-Kompas,K2,train,money,2000,25.01
-Kompas,K2,train,tekno,1997,24.97
-Kompas,K2,validation,bola,250,25.0
-Kompas,K2,validation,global,250,25.0
-Kompas,K2,validation,money,250,25.0
-Kompas,K2,validation,tekno,250,25.0
-Kompas,K3,test,bola,250,25.0
-Kompas,K3,test,global,250,25.0
-Kompas,K3,test,money,250,25.0
-Kompas,K3,test,tekno,250,25.0
-Kompas,K3,train,bola,2000,25.01
-Kompas,K3,train,global,2000,25.01
-Kompas,K3,train,money,2000,25.01
-Kompas,K3,train,tekno,1997,24.97
-Kompas,K3,validation,bola,250,25.0
-Kompas,K3,validation,global,250,25.0
-Kompas,K3,validation,money,250,25.0
-Kompas,K3,validation,tekno,250,25.0
-Kompas,K4,test,bola,250,25.0
-Kompas,K4,test,global,250,25.0
-Kompas,K4,test,money,250,25.0
-Kompas,K4,test,tekno,250,25.0
-Kompas,K4,train,bola,2000,25.01
-Kompas,K4,train,global,2000,25.01
-Kompas,K4,train,money,2000,25.01
-Kompas,K4,train,tekno,1997,24.97
-Kompas,K4,validation,bola,250,25.0
-Kompas,K4,validation,global,250,25.0
-Kompas,K4,validation,money,250,25.0
-Kompas,K4,validation,tekno,250,25.0
-AG News Train,A1,train,business,26973,25.0
-AG News Train,A1,train,sci_tech,26944,24.98
-AG News Train,A1,train,sports,26979,25.01
-AG News Train,A1,train,world,26987,25.02
-AG News Train,A1,validation,business,2997,25.0
-AG News Train,A1,validation,sci_tech,2994,24.97
-AG News Train,A1,validation,sports,2998,25.01
-AG News Train,A1,validation,world,2999,25.02
-AG News Train,A2,train,business,26973,25.0
-AG News Train,A2,train,sci_tech,26944,24.98
-AG News Train,A2,train,sports,26979,25.01
-AG News Train,A2,train,world,26987,25.02
-AG News Train,A2,validation,business,2997,25.0
-AG News Train,A2,validation,sci_tech,2994,24.97
-AG News Train,A2,validation,sports,2998,25.01
-AG News Train,A2,validation,world,2999,25.02
-AG News Test,A1,test,business,1861,24.93
-AG News Test,A1,test,sci_tech,1862,24.95
-AG News Test,A1,test,sports,1874,25.11
-AG News Test,A1,test,world,1867,25.01
-AG News Test,A2,test,business,1861,24.93
-AG News Test,A2,test,sci_tech,1862,24.95
-AG News Test,A2,test,sports,1874,25.11
-AG News Test,A2,test,world,1867,25.01
+﻿dataset,scenario_code,scenario_name,uses_yake,split,category,jumlah_data,persentase_dalam_split
+Kompas,K1,Title,False,test,bola,250,25.0
+Kompas,K1,Title,False,test,global,250,25.0
+Kompas,K1,Title,False,test,money,250,25.0
+Kompas,K1,Title,False,test,tekno,250,25.0
+Kompas,K1,Title,False,train,bola,2000,25.0094
+Kompas,K1,Title,False,train,global,2000,25.0094
+Kompas,K1,Title,False,train,money,2000,25.0094
+Kompas,K1,Title,False,train,tekno,1997,24.9719
+Kompas,K1,Title,False,validation,bola,250,25.0
+Kompas,K1,Title,False,validation,global,250,25.0
+Kompas,K1,Title,False,validation,money,250,25.0
+Kompas,K1,Title,False,validation,tekno,250,25.0
+Kompas,K2,Title + Description,False,test,bola,250,25.0
+Kompas,K2,Title + Description,False,test,global,250,25.0
+Kompas,K2,Title + Description,False,test,money,250,25.0
+Kompas,K2,Title + Description,False,test,tekno,250,25.0
+Kompas,K2,Title + Description,False,train,bola,2000,25.0094
+Kompas,K2,Title + Description,False,train,global,2000,25.0094
+Kompas,K2,Title + Description,False,train,money,2000,25.0094
+Kompas,K2,Title + Description,False,train,tekno,1997,24.9719
+Kompas,K2,Title + Description,False,validation,bola,250,25.0
+Kompas,K2,Title + Description,False,validation,global,250,25.0
+Kompas,K2,Title + Description,False,validation,money,250,25.0
+Kompas,K2,Title + Description,False,validation,tekno,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,test,bola,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,test,global,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,test,money,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,test,tekno,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,train,bola,2000,25.0094
+Kompas,K3,Title + Description + Keyword YAKE,True,train,global,2000,25.0094
+Kompas,K3,Title + Description + Keyword YAKE,True,train,money,2000,25.0094
+Kompas,K3,Title + Description + Keyword YAKE,True,train,tekno,1997,24.9719
+Kompas,K3,Title + Description + Keyword YAKE,True,validation,bola,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,validation,global,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,validation,money,250,25.0
+Kompas,K3,Title + Description + Keyword YAKE,True,validation,tekno,250,25.0
+AG News Train,A1,Title,False,train,business,26952,24.9937
+AG News Train,A1,Title,False,train,sci_tech,26925,24.9687
+AG News Train,A1,Title,False,train,sports,26977,25.0169
+AG News Train,A1,Title,False,train,world,26981,25.0206
+AG News Train,A1,Title,False,validation,business,2995,24.9958
+AG News Train,A1,Title,False,validation,sci_tech,2992,24.9708
+AG News Train,A1,Title,False,validation,sports,2997,25.0125
+AG News Train,A1,Title,False,validation,world,2998,25.0209
+AG News Train,A2,Title + Description,False,train,business,26952,24.9937
+AG News Train,A2,Title + Description,False,train,sci_tech,26925,24.9687
+AG News Train,A2,Title + Description,False,train,sports,26977,25.0169
+AG News Train,A2,Title + Description,False,train,world,26981,25.0206
+AG News Train,A2,Title + Description,False,validation,business,2995,24.9958
+AG News Train,A2,Title + Description,False,validation,sci_tech,2992,24.9708
+AG News Train,A2,Title + Description,False,validation,sports,2997,25.0125
+AG News Train,A2,Title + Description,False,validation,world,2998,25.0209
+AG News Test,A1,Title,False,test,business,1900,25.0
+AG News Test,A1,Title,False,test,sci_tech,1900,25.0
+AG News Test,A1,Title,False,test,sports,1900,25.0
+AG News Test,A1,Title,False,test,world,1900,25.0
+AG News Test,A2,Title + Description,False,test,business,1900,25.0
+AG News Test,A2,Title + Description,False,test,sci_tech,1900,25.0
+AG News Test,A2,Title + Description,False,test,sports,1900,25.0
+AG News Test,A2,Title + Description,False,test,world,1900,25.0

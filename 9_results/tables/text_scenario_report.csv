@@ -1,9 +1,8 @@
-﻿dataset,scenario_code,scenario_name,jumlah_data,avg_word_count,median_word_count,min_word_count,max_word_count,empty_text
-Kompas,K1,Title,9997,10.98,11.0,2,20,0
-Kompas,K2,Title + Description,9997,30.34,30.0,13,52,0
-Kompas,K3,Title + Description + Keyword,9997,46.13,46.0,27,68,0
-Kompas,K4,Title + Description + Keyword + Content,9997,384.93,378.0,83,2034,0
-AG News Train,A1,Title,119871,7.01,7.0,1,19,0
-AG News Train,A2,Title + Description,119871,39.8,39.0,5,178,0
-AG News Test,A1,Title,7464,6.53,6.0,1,17,0
-AG News Test,A2,Title + Description,7464,31.45,34.0,1,138,0
+﻿dataset,scenario_code,scenario_name,component_signature,uses_yake,includes_content,yake_comparison_role,comparison_group,jumlah_data,avg_word_count,median_word_count,min_word_count,max_word_count,avg_separator_count,empty_text
+Kompas,K1,Title,title_preprocessed,False,False,not_applicable,representation_ablation,9997,10.98,11.0,2,20,0.0,0
+Kompas,K2,Title + Description,title_preprocessed + description_preprocessed,False,False,baseline_without_yake,K2_vs_K3_yake_ablation,9997,30.34,30.0,13,52,1.0,0
+Kompas,K3,Title + Description + Keyword YAKE,title_preprocessed + description_preprocessed + keyword_yake,True,False,treatment_with_yake,K2_vs_K3_yake_ablation,9997,44.36,44.0,22,68,2.0,0
+AG News Train,A1,Title,title_preprocessed,False,False,not_applicable,agnews_text_ablation,119817,6.9,7.0,1,19,0.0,0
+AG News Train,A2,Title + Description,title_preprocessed + description_preprocessed,False,False,not_applicable,agnews_text_ablation,119817,39.41,39.0,5,178,1.0,0
+AG News Test,A1,Title,title_preprocessed,False,False,not_applicable,agnews_text_ablation,7600,6.88,7.0,1,17,0.0,0
+AG News Test,A2,Title + Description,title_preprocessed + description_preprocessed,False,False,not_applicable,agnews_text_ablation,7600,39.27,39.0,12,139,1.0,0
