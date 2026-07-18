@@ -1,4 +1,7 @@
-﻿dataset,jumlah_data,duplikat_artikel_exact,duplikat_title_normalized,duplikat_content_normalized,duplikat_link_normalized,judul_muncul_lintas_kategori,duplikat_artikel_normalized
-kompas,10000,0,0,3.0,0.0,0,
-ag_news_train,120000,64,6369,,,653,129.0
-ag_news_test,7532,61,120,,,18,62.0
+﻿dataset,stage,source_path,jumlah_data,duplikat_artikel_exact,duplikat_title_normalized,kelompok_title_duplikat,duplikat_content_normalized,kelompok_content_duplikat,duplikat_link_normalized,kelompok_link_duplikat,judul_muncul_lintas_kategori,kelompok_konflik_label,baris_konflik_label,duplikat_artikel_normalized,duplikat_article_key_tanpa_label
+kompas,sebelum_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\kompas_processed.csv,10000,0,0,0,3,3,0,0,0,0,0,,
+ag_news_train,sebelum_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\ag_news_train_processed.csv,120000,64,6369,5215,0,0,0,0,653,22,44,129.0,151.0
+ag_news_test,sebelum_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\ag_news_test_processed.csv,7600,0,41,38,0,0,0,0,4,0,0,0.0,0.0
+kompas,setelah_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\kompas_clean.csv,9997,0,0,0,0,0,0,0,0,0,0,,
+ag_news_train,setelah_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\ag_news_train_clean.csv,119817,0,6214,5092,0,0,0,0,632,0,0,0.0,0.0
+ag_news_test,setelah_cleaning,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\2_data\processed\ag_news_test_clean.csv,7600,0,41,38,0,0,0,0,4,0,0,0.0,0.0

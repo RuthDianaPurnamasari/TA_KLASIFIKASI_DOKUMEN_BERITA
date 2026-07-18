@@ -7,30 +7,34 @@
 # Tujuan:
 # Melatih model Attention-BiLSTM pada satu skenario representasi teks.
 #
-# Contoh menjalankan:
+# Contoh:
 # python 5_modeling/train_attention_bilstm.py K1
 #
 # Alur:
 # 1. Membaca konfigurasi skenario
-# 2. Memuat train dan validation dari file NPZ
-# 3. Memvalidasi bentuk data
-# 4. Membuat model Attention-BiLSTM
-# 5. Melatih model
-# 6. Menyimpan checkpoint terbaik
-# 7. Menyimpan model final
-# 8. Menyimpan training history
-# 9. Menyimpan ringkasan hasil training
+# 2. Memuat data train dan validation dari NPZ
+# 3. Memvalidasi bentuk data, label, token, dan document_id
+# 4. Membuat tf.data.Dataset
+# 5. Membangun Attention-BiLSTM
+# 6. Melatih model
+# 7. Menyimpan checkpoint berdasarkan val_loss terbaik
+# 8. Memuat kembali checkpoint terbaik
+# 9. Menyimpan checkpoint terbaik sebagai model final
+# 10. Menyimpan history dan training summary
 #
-# Test set tidak digunakan pada tahap training.
+# Test set tidak digunakan dalam proses training.
 # =============================================================================
 
 from __future__ import annotations
 
+import argparse
 import gc
 import json
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -54,11 +58,11 @@ if str(PROJECT_ROOT) not in sys.path:
 # IMPORT MODULE PROJECT
 # =============================================================================
 
-from attention_bilstm_model import (
+from attention_bilstm_model import (  # noqa: E402
     build_attention_bilstm_model,
 )
 
-from training_config import (
+from training_config import (  # noqa: E402
     RANDOM_SEED,
     NUM_CLASSES,
     EPOCHS,
@@ -87,6 +91,23 @@ from training_config import (
 
 
 # =============================================================================
+# KONFIGURASI EKSPERIMEN FINAL
+# =============================================================================
+
+VALID_SCENARIOS = [
+    "K1",
+    "K2",
+    "K3",
+    "A1",
+    "A2",
+]
+
+MODEL_CODE = "attention_bilstm"
+
+MODEL_DISPLAY_NAME = "Attention-BiLSTM"
+
+
+# =============================================================================
 # OUTPUT DIRECTORY
 # =============================================================================
 
@@ -103,13 +124,25 @@ TRAINING_SUMMARY_DIR = (
 
 def load_npz_dataset(
     file_path: Path,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     """
-    Memuat X dan y dari file NPZ.
+    Memuat data hasil text vectorization dari file NPZ.
 
-    File NPZ harus memiliki:
-    - X: sequence integer
-    - y: label integer
+    File NPZ wajib memiliki:
+    - X
+    - y
+    - document_id
+    - category
+
+    Returns
+    -------
+    tuple
+        X, y, document_id, category.
     """
 
     if not file_path.exists():
@@ -118,29 +151,70 @@ def load_npz_dataset(
             f"{file_path}"
         )
 
+    if not file_path.is_file():
+        raise ValueError(
+            "Path dataset bukan file:\n"
+            f"{file_path}"
+        )
+
+    if file_path.stat().st_size <= 0:
+        raise ValueError(
+            "File dataset kosong:\n"
+            f"{file_path}"
+        )
+
     with np.load(
         file_path,
         allow_pickle=False,
     ) as data:
 
-        available_keys = list(
+        available_keys = set(
             data.files
         )
 
-        if (
-            "X" not in available_keys
-            or "y" not in available_keys
-        ):
+        required_keys = {
+            "X",
+            "y",
+            "document_id",
+            "category",
+        }
+
+        missing_keys = (
+            required_keys
+            - available_keys
+        )
+
+        if missing_keys:
             raise KeyError(
-                "File NPZ harus memiliki key "
-                "'X' dan 'y'.\n"
-                f"Key ditemukan: {available_keys}"
+                "File NPZ tidak memiliki seluruh key "
+                "yang diperlukan.\n"
+                f"Key wajib      : {sorted(required_keys)}\n"
+                f"Key ditemukan : {sorted(available_keys)}\n"
+                f"Key tidak ada : {sorted(missing_keys)}"
             )
 
-        X = data["X"]
-        y = data["y"]
+        X = np.asarray(
+            data["X"]
+        )
 
-    return X, y
+        y = np.asarray(
+            data["y"]
+        )
+
+        document_ids = np.asarray(
+            data["document_id"]
+        )
+
+        categories = np.asarray(
+            data["category"]
+        )
+
+    return (
+        X,
+        y,
+        document_ids,
+        categories,
+    )
 
 
 # =============================================================================
@@ -150,29 +224,75 @@ def load_npz_dataset(
 def validate_dataset(
     X: np.ndarray,
     y: np.ndarray,
+    document_ids: np.ndarray,
+    categories: np.ndarray,
     split_name: str,
     expected_sequence_length: int,
+    vocabulary_size: int,
 ) -> None:
     """
-    Memastikan bentuk data sesuai kebutuhan model.
+    Memastikan array hasil vectorization sesuai dengan model.
     """
+
+    # -------------------------------------------------------------------------
+    # VALIDASI DIMENSI
+    # -------------------------------------------------------------------------
 
     if X.ndim != 2:
         raise ValueError(
-            f"{split_name}: X harus dua dimensi. "
+            f"{split_name}: X harus memiliki dua dimensi.\n"
             f"Shape ditemukan: {X.shape}"
         )
 
     if y.ndim != 1:
         raise ValueError(
-            f"{split_name}: y harus satu dimensi. "
+            f"{split_name}: y harus memiliki satu dimensi.\n"
             f"Shape ditemukan: {y.shape}"
         )
 
-    if len(X) != len(y):
+    if document_ids.ndim != 1:
         raise ValueError(
-            f"{split_name}: jumlah X dan y tidak sama."
+            f"{split_name}: document_id harus "
+            "memiliki satu dimensi.\n"
+            f"Shape ditemukan: {document_ids.shape}"
         )
+
+    if categories.ndim != 1:
+        raise ValueError(
+            f"{split_name}: category harus "
+            "memiliki satu dimensi.\n"
+            f"Shape ditemukan: {categories.shape}"
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI JUMLAH DATA
+    # -------------------------------------------------------------------------
+
+    row_counts = {
+        "X": len(X),
+        "y": len(y),
+        "document_id": len(document_ids),
+        "category": len(categories),
+    }
+
+    if len(
+        set(
+            row_counts.values()
+        )
+    ) != 1:
+        raise ValueError(
+            f"{split_name}: jumlah baris array tidak sama.\n"
+            f"{row_counts}"
+        )
+
+    if len(X) == 0:
+        raise ValueError(
+            f"{split_name}: dataset kosong."
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI SEQUENCE LENGTH
+    # -------------------------------------------------------------------------
 
     if X.shape[1] != expected_sequence_length:
         raise ValueError(
@@ -181,29 +301,273 @@ def validate_dataset(
             f"Actual   : {X.shape[1]}"
         )
 
-    if len(X) == 0:
-        raise ValueError(
-            f"{split_name}: dataset kosong."
+    # -------------------------------------------------------------------------
+    # VALIDASI TIPE DATA
+    # -------------------------------------------------------------------------
+
+    if not np.issubdtype(
+        X.dtype,
+        np.integer,
+    ):
+        raise TypeError(
+            f"{split_name}: X harus bertipe integer.\n"
+            f"Ditemukan: {X.dtype}"
         )
+
+    if not np.issubdtype(
+        y.dtype,
+        np.integer,
+    ):
+        raise TypeError(
+            f"{split_name}: y harus bertipe integer.\n"
+            f"Ditemukan: {y.dtype}"
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI TOKEN ID
+    # -------------------------------------------------------------------------
+
+    minimum_token_id = int(
+        X.min()
+    )
+
+    maximum_token_id = int(
+        X.max()
+    )
+
+    if minimum_token_id < 0:
+        raise ValueError(
+            f"{split_name}: terdapat token ID negatif.\n"
+            f"Token ID minimum: {minimum_token_id}"
+        )
+
+    if maximum_token_id >= vocabulary_size:
+        raise ValueError(
+            f"{split_name}: token ID melebihi "
+            "ukuran vocabulary.\n"
+            f"Token ID maksimum : {maximum_token_id:,}\n"
+            f"Vocabulary size   : {vocabulary_size:,}\n"
+            f"Indeks maksimum yang diperbolehkan: "
+            f"{vocabulary_size - 1:,}"
+        )
+
+    all_padding_rows = int(
+        np.all(
+            X == 0,
+            axis=1,
+        ).sum()
+    )
+
+    if all_padding_rows > 0:
+        raise ValueError(
+            f"{split_name}: terdapat "
+            f"{all_padding_rows:,} sequence yang "
+            "seluruhnya hanya berisi padding."
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI LABEL
+    # -------------------------------------------------------------------------
 
     unique_labels = np.unique(
         y
     )
 
-    if np.min(unique_labels) < 0:
+    if unique_labels.size == 0:
         raise ValueError(
-            f"{split_name}: ditemukan label negatif."
+            f"{split_name}: label tidak ditemukan."
         )
 
-    if np.max(unique_labels) >= NUM_CLASSES:
+    minimum_label = int(
+        unique_labels.min()
+    )
+
+    maximum_label = int(
+        unique_labels.max()
+    )
+
+    if minimum_label < 0:
         raise ValueError(
-            f"{split_name}: label melebihi jumlah kelas."
+            f"{split_name}: terdapat label negatif."
+        )
+
+    if maximum_label >= NUM_CLASSES:
+        raise ValueError(
+            f"{split_name}: label melebihi jumlah kelas.\n"
+            f"Label maksimum : {maximum_label}\n"
+            f"Jumlah kelas   : {NUM_CLASSES}"
+        )
+
+    expected_labels = set(
+        range(NUM_CLASSES)
+    )
+
+    actual_labels = {
+        int(label)
+        for label in unique_labels
+    }
+
+    if actual_labels != expected_labels:
+        raise ValueError(
+            f"{split_name}: label tidak lengkap.\n"
+            f"Seharusnya: {sorted(expected_labels)}\n"
+            f"Ditemukan : {sorted(actual_labels)}"
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI DOCUMENT ID
+    # -------------------------------------------------------------------------
+
+    normalized_document_ids = (
+        document_ids
+        .astype(str)
+    )
+
+    empty_document_ids = int(
+        np.sum(
+            np.char.strip(
+                normalized_document_ids
+            )
+            == ""
+        )
+    )
+
+    if empty_document_ids > 0:
+        raise ValueError(
+            f"{split_name}: ditemukan "
+            f"{empty_document_ids:,} document_id kosong."
+        )
+
+    unique_document_count = len(
+        np.unique(
+            normalized_document_ids
+        )
+    )
+
+    duplicate_document_count = (
+        len(normalized_document_ids)
+        - unique_document_count
+    )
+
+    if duplicate_document_count > 0:
+        raise ValueError(
+            f"{split_name}: terdapat "
+            f"{duplicate_document_count:,} document_id duplikat."
+        )
+
+    # -------------------------------------------------------------------------
+    # VALIDASI CATEGORY
+    # -------------------------------------------------------------------------
+
+    normalized_categories = (
+        categories
+        .astype(str)
+    )
+
+    empty_categories = int(
+        np.sum(
+            np.char.strip(
+                normalized_categories
+            )
+            == ""
+        )
+    )
+
+    if empty_categories > 0:
+        raise ValueError(
+            f"{split_name}: ditemukan "
+            f"{empty_categories:,} category kosong."
+        )
+
+
+# =============================================================================
+# VALIDASI TRAIN DAN VALIDATION TERPISAH
+# =============================================================================
+
+def validate_split_disjointness(
+    train_document_ids: np.ndarray,
+    validation_document_ids: np.ndarray,
+) -> None:
+    """
+    Memastikan tidak ada document_id yang muncul pada train
+    dan validation secara bersamaan.
+    """
+
+    train_ids = set(
+        train_document_ids
+        .astype(str)
+        .tolist()
+    )
+
+    validation_ids = set(
+        validation_document_ids
+        .astype(str)
+        .tolist()
+    )
+
+    overlap = (
+        train_ids
+        .intersection(
+            validation_ids
+        )
+    )
+
+    if overlap:
+        overlap_examples = sorted(
+            overlap
+        )[:10]
+
+        raise ValueError(
+            "Ditemukan document_id yang sama pada train "
+            "dan validation.\n"
+            f"Jumlah overlap : {len(overlap):,}\n"
+            f"Contoh         : {overlap_examples}"
         )
 
 
 # =============================================================================
 # DISTRIBUSI LABEL
 # =============================================================================
+
+def get_label_distribution(
+    y: np.ndarray,
+) -> dict[str, dict[str, float | int]]:
+    """
+    Menghasilkan distribusi label untuk training summary.
+    """
+
+    labels, counts = np.unique(
+        y,
+        return_counts=True,
+    )
+
+    distribution: dict[
+        str,
+        dict[str, float | int],
+    ] = {}
+
+    for label, count in zip(
+        labels,
+        counts,
+    ):
+        distribution[
+            str(
+                int(label)
+            )
+        ] = {
+            "count": int(count),
+            "percentage": round(
+                float(
+                    count
+                    / len(y)
+                    * 100
+                ),
+                4,
+            ),
+        }
+
+    return distribution
+
 
 def print_label_distribution(
     y: np.ndarray,
@@ -213,24 +577,25 @@ def print_label_distribution(
     Menampilkan distribusi label pada terminal.
     """
 
-    labels, counts = np.unique(
-        y,
-        return_counts=True,
+    distribution = get_label_distribution(
+        y
     )
 
     print(
         f"\nDistribusi label {split_name}:"
     )
 
-    for label, count in zip(
-        labels,
-        counts,
+    for label in sorted(
+        distribution,
+        key=int,
     ):
-        percentage = (
-            count
-            / len(y)
-            * 100
-        )
+        count = distribution[
+            label
+        ]["count"]
+
+        percentage = distribution[
+            label
+        ]["percentage"]
 
         print(
             f"Label {label} : "
@@ -250,23 +615,34 @@ def create_tf_dataset(
     training: bool,
 ) -> tf.data.Dataset:
     """
-    Mengubah NumPy array menjadi tf.data.Dataset.
+    Mengubah array NumPy menjadi tf.data.Dataset.
 
     Train:
-    - shuffle
-    - batch
-    - prefetch
+    - shuffle;
+    - batch;
+    - prefetch.
 
     Validation:
-    - batch
-    - prefetch
+    - batch;
+    - prefetch.
     """
 
     dataset = (
         tf.data.Dataset
         .from_tensor_slices(
-            (X, y)
+            (
+                X,
+                y,
+            )
         )
+    )
+
+    options = tf.data.Options()
+
+    options.experimental_deterministic = True
+
+    dataset = dataset.with_options(
+        options
     )
 
     if training:
@@ -302,12 +678,17 @@ def save_training_history(
     output_path: Path,
 ) -> pd.DataFrame:
     """
-    Menyimpan riwayat training dalam bentuk CSV.
+    Menyimpan riwayat training dalam format CSV.
     """
 
     history_dataframe = pd.DataFrame(
         history.history
     )
+
+    if history_dataframe.empty:
+        raise ValueError(
+            "Training history kosong."
+        )
 
     history_dataframe.insert(
         0,
@@ -315,6 +696,7 @@ def save_training_history(
         np.arange(
             1,
             len(history_dataframe) + 1,
+            dtype=np.int32,
         ),
     )
 
@@ -329,6 +711,18 @@ def save_training_history(
         encoding="utf-8-sig",
     )
 
+    if not output_path.exists():
+        raise FileNotFoundError(
+            "File training history gagal dibuat:\n"
+            f"{output_path}"
+        )
+
+    if output_path.stat().st_size <= 0:
+        raise ValueError(
+            "File training history kosong:\n"
+            f"{output_path}"
+        )
+
     return history_dataframe
 
 
@@ -338,33 +732,52 @@ def save_training_history(
 
 def get_best_epoch_information(
     history_dataframe: pd.DataFrame,
-) -> dict:
+) -> dict[str, float | int]:
     """
     Memilih epoch terbaik berdasarkan val_loss terkecil.
     """
 
-    if (
-        "val_loss"
-        not in history_dataframe.columns
-    ):
+    required_columns = {
+        "epoch",
+        "loss",
+        "accuracy",
+        "val_loss",
+        "val_accuracy",
+    }
+
+    missing_columns = (
+        required_columns
+        - set(
+            history_dataframe.columns
+        )
+    )
+
+    if missing_columns:
         raise KeyError(
-            "Kolom val_loss tidak ditemukan "
-            "pada training history."
+            "Training history tidak memiliki seluruh "
+            "kolom yang diperlukan.\n"
+            f"Kolom tidak ada: {sorted(missing_columns)}"
         )
 
-    best_index = (
+    validation_losses = pd.to_numeric(
         history_dataframe[
             "val_loss"
-        ]
-        .idxmin()
+        ],
+        errors="coerce",
     )
 
-    best_row = (
-        history_dataframe
-        .loc[best_index]
-    )
+    if validation_losses.isna().all():
+        raise ValueError(
+            "Seluruh nilai val_loss tidak valid."
+        )
 
-    result = {
+    best_index = validation_losses.idxmin()
+
+    best_row = history_dataframe.loc[
+        best_index
+    ]
+
+    result: dict[str, float | int] = {
         "best_epoch": int(
             best_row["epoch"]
         ),
@@ -386,15 +799,29 @@ def get_best_epoch_information(
         ),
     }
 
-    if (
-        "learning_rate"
-        in history_dataframe.columns
-    ):
-        result[
-            "learning_rate_at_best_epoch"
-        ] = float(
-            best_row["learning_rate"]
+    learning_rate_column = None
+
+    if "learning_rate" in history_dataframe.columns:
+        learning_rate_column = (
+            "learning_rate"
         )
+
+    elif "lr" in history_dataframe.columns:
+        learning_rate_column = "lr"
+
+    if learning_rate_column is not None:
+        learning_rate_value = best_row[
+            learning_rate_column
+        ]
+
+        if pd.notna(
+            learning_rate_value
+        ):
+            result[
+                "learning_rate_at_best_epoch"
+            ] = float(
+                learning_rate_value
+            )
 
     return result
 
@@ -403,12 +830,44 @@ def get_best_epoch_information(
 # MENYIMPAN TRAINING SUMMARY
 # =============================================================================
 
+def convert_to_json_safe(
+    value: Any,
+) -> Any:
+    """
+    Mengubah tipe NumPy menjadi tipe Python agar dapat
+    disimpan ke JSON.
+    """
+
+    if isinstance(
+        value,
+        np.integer,
+    ):
+        return int(value)
+
+    if isinstance(
+        value,
+        np.floating,
+    ):
+        return float(value)
+
+    if isinstance(
+        value,
+        np.ndarray,
+    ):
+        return value.tolist()
+
+    return value
+
+
 def save_training_summary(
     summary: dict,
     output_path: Path,
 ) -> None:
     """
-    Menyimpan ringkasan training dalam JSON.
+    Menyimpan training summary dalam JSON secara atomik.
+
+    File sementara ditulis terlebih dahulu agar summary tidak
+    menjadi rusak jika proses penulisan terhenti.
     """
 
     output_path.parent.mkdir(
@@ -416,8 +875,13 @@ def save_training_summary(
         exist_ok=True,
     )
 
+    temporary_path = output_path.with_name(
+        f"{output_path.stem}.tmp"
+        f"{output_path.suffix}"
+    )
+
     with open(
-        output_path,
+        temporary_path,
         "w",
         encoding="utf-8",
     ) as file:
@@ -426,7 +890,110 @@ def save_training_summary(
             file,
             ensure_ascii=False,
             indent=4,
+            default=convert_to_json_safe,
         )
+
+    temporary_path.replace(
+        output_path
+    )
+
+
+# =============================================================================
+# MEMBERSIHKAN ARTEFAK EKSPERIMEN LAMA
+# =============================================================================
+
+def remove_previous_artifacts(
+    paths: list[Path],
+) -> None:
+    """
+    Menghapus artefak lama agar hasil eksperimen sebelumnya
+    tidak dianggap sebagai hasil eksperimen yang sedang berjalan.
+    """
+
+    for artifact_path in paths:
+        if artifact_path.exists():
+            if artifact_path.is_file():
+                artifact_path.unlink()
+
+                print(
+                    "Artefak lama dihapus:"
+                )
+
+                print(
+                    artifact_path
+                )
+
+            else:
+                raise ValueError(
+                    "Path artefak seharusnya berupa file:\n"
+                    f"{artifact_path}"
+                )
+
+
+# =============================================================================
+# VALIDASI FILE OUTPUT
+# =============================================================================
+
+def validate_output_file(
+    file_path: Path,
+    description: str,
+) -> None:
+    """
+    Memastikan file output tersedia dan tidak kosong.
+    """
+
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f"{description} tidak terbentuk:\n"
+            f"{file_path}"
+        )
+
+    if not file_path.is_file():
+        raise ValueError(
+            f"{description} bukan file:\n"
+            f"{file_path}"
+        )
+
+    if file_path.stat().st_size <= 0:
+        raise ValueError(
+            f"{description} kosong:\n"
+            f"{file_path}"
+        )
+
+
+# =============================================================================
+# INFORMASI PERANGKAT
+# =============================================================================
+
+def get_device_information() -> dict:
+    """
+    Mengambil informasi GPU dan CPU yang tersedia.
+    """
+
+    gpu_devices = tf.config.list_physical_devices(
+        "GPU"
+    )
+
+    cpu_devices = tf.config.list_physical_devices(
+        "CPU"
+    )
+
+    return {
+        "tensorflow_version": tf.__version__,
+        "gpu_available": bool(
+            gpu_devices
+        ),
+        "gpu_count": len(
+            gpu_devices
+        ),
+        "gpu_devices": [
+            device.name
+            for device in gpu_devices
+        ],
+        "cpu_count_detected": len(
+            cpu_devices
+        ),
+    }
 
 
 # =============================================================================
@@ -437,19 +1004,41 @@ def train_attention_bilstm(
     scenario_code: str,
 ) -> None:
     """
-    Menjalankan training Attention-BiLSTM
-    untuk satu skenario.
+    Menjalankan training Attention-BiLSTM untuk satu skenario.
     """
 
     # -------------------------------------------------------------------------
-    # 1. PERSIAPAN
+    # 1. VALIDASI SKENARIO
     # -------------------------------------------------------------------------
 
     scenario_code = (
-        validate_scenario_code(
+        str(
             scenario_code
         )
+        .strip()
+        .upper()
     )
+
+    if scenario_code not in VALID_SCENARIOS:
+        raise ValueError(
+            f"Skenario tidak valid: {scenario_code}\n"
+            f"Skenario valid: {VALID_SCENARIOS}"
+        )
+
+    scenario_code = validate_scenario_code(
+        scenario_code
+    )
+
+    if scenario_code not in VALID_SCENARIOS:
+        raise ValueError(
+            "training_config mengembalikan skenario "
+            "yang tidak termasuk eksperimen final:\n"
+            f"{scenario_code}"
+        )
+
+    # -------------------------------------------------------------------------
+    # 2. REPRODUCIBILITY DAN DIRECTORY
+    # -------------------------------------------------------------------------
 
     set_global_seed()
 
@@ -465,87 +1054,61 @@ def train_attention_bilstm(
     gc.collect()
 
     # -------------------------------------------------------------------------
-    # 2. INFORMASI SKENARIO
+    # 3. INFORMASI SKENARIO
     # -------------------------------------------------------------------------
 
-    scenario_config = (
-        get_scenario_config(
-            scenario_code
-        )
+    scenario_config = get_scenario_config(
+        scenario_code
     )
 
-    vocabulary_size = (
+    vocabulary_size = int(
         get_vocabulary_size(
             scenario_code
         )
     )
 
-    max_sequence_length = (
+    max_sequence_length = int(
         scenario_config[
             "max_sequence_length"
         ]
     )
 
-    experiment_name = (
-        get_experiment_name(
-            model_name=(
-                "attention_bilstm"
-            ),
-            scenario_code=(
-                scenario_code
-            ),
-        )
+    experiment_name = get_experiment_name(
+        model_name=MODEL_CODE,
+        scenario_code=scenario_code,
     )
 
     # -------------------------------------------------------------------------
-    # 3. PATH DATA DAN OUTPUT
+    # 4. PATH DATA
     # -------------------------------------------------------------------------
 
-    train_path = (
-        get_split_path(
-            scenario_code,
-            "train",
-        )
+    train_path = get_split_path(
+        scenario_code,
+        "train",
     )
 
-    validation_path = (
-        get_split_path(
-            scenario_code,
-            "validation",
-        )
+    validation_path = get_split_path(
+        scenario_code,
+        "validation",
     )
 
-    checkpoint_path = (
-        get_checkpoint_path(
-            model_name=(
-                "attention_bilstm"
-            ),
-            scenario_code=(
-                scenario_code
-            ),
-        )
+    # -------------------------------------------------------------------------
+    # 5. PATH OUTPUT
+    # -------------------------------------------------------------------------
+
+    checkpoint_path = get_checkpoint_path(
+        model_name=MODEL_CODE,
+        scenario_code=scenario_code,
     )
 
-    final_model_path = (
-        get_final_model_path(
-            model_name=(
-                "attention_bilstm"
-            ),
-            scenario_code=(
-                scenario_code
-            ),
-        )
+    final_model_path = get_final_model_path(
+        model_name=MODEL_CODE,
+        scenario_code=scenario_code,
     )
 
-    history_path = (
-        get_history_path(
-            model_name=(
-                "attention_bilstm"
-            ),
-            scenario_code=(
-                scenario_code
-            ),
-        )
+    history_path = get_history_path(
+        model_name=MODEL_CODE,
+        scenario_code=scenario_code,
     )
 
     summary_path = (
@@ -557,7 +1120,50 @@ def train_attention_bilstm(
     )
 
     # -------------------------------------------------------------------------
-    # 4. INFORMASI TERMINAL
+    # 6. MEMBERSIHKAN ARTEFAK LAMA
+    # -------------------------------------------------------------------------
+
+    remove_previous_artifacts(
+        [
+            checkpoint_path,
+            final_model_path,
+            history_path,
+            summary_path,
+        ]
+    )
+
+    # -------------------------------------------------------------------------
+    # 7. MENYIMPAN STATUS RUNNING
+    # -------------------------------------------------------------------------
+
+    started_at = datetime.now()
+
+    running_summary = {
+        "status": "running",
+        "experiment_name": experiment_name,
+        "model": MODEL_DISPLAY_NAME,
+        "model_code": MODEL_CODE,
+        "dataset": scenario_config[
+            "dataset"
+        ],
+        "scenario_code": scenario_code,
+        "scenario_name": scenario_config[
+            "scenario_name"
+        ],
+        "started_at": started_at.isoformat(
+            timespec="seconds"
+        ),
+        "random_seed": RANDOM_SEED,
+        "tensorflow_version": tf.__version__,
+    }
+
+    save_training_summary(
+        summary=running_summary,
+        output_path=summary_path,
+    )
+
+    # -------------------------------------------------------------------------
+    # 8. INFORMASI TERMINAL
     # -------------------------------------------------------------------------
 
     print("=" * 72)
@@ -612,6 +1218,11 @@ def train_attention_bilstm(
     )
 
     print(
+        f"Embedding dimension: "
+        f"{EMBEDDING_DIM}"
+    )
+
+    print(
         f"LSTM units/arah    : "
         f"{BILSTM_UNITS}"
     )
@@ -621,51 +1232,111 @@ def train_attention_bilstm(
         f"{ATTENTION_UNITS}"
     )
 
+    print(
+        f"Dense units        : "
+        f"{DENSE_UNITS}"
+    )
+
+    gpu_devices = tf.config.list_physical_devices(
+        "GPU"
+    )
+
+    print(
+        f"GPU terdeteksi     : "
+        f"{len(gpu_devices)}"
+    )
+
+    if not gpu_devices:
+        print(
+            "Training menggunakan CPU."
+        )
+
     # -------------------------------------------------------------------------
-    # 5. LOAD DATA
+    # 9. LOAD DATA TRAIN
     # -------------------------------------------------------------------------
 
     print(
         "\nMemuat data train..."
     )
 
-    X_train, y_train = (
-        load_npz_dataset(
-            train_path
-        )
+    (
+        X_train,
+        y_train,
+        train_document_ids,
+        train_categories,
+    ) = load_npz_dataset(
+        train_path
     )
+
+    # -------------------------------------------------------------------------
+    # 10. LOAD DATA VALIDATION
+    # -------------------------------------------------------------------------
 
     print(
         "Memuat data validation..."
     )
 
-    X_validation, y_validation = (
-        load_npz_dataset(
-            validation_path
-        )
+    (
+        X_validation,
+        y_validation,
+        validation_document_ids,
+        validation_categories,
+    ) = load_npz_dataset(
+        validation_path
     )
 
     # -------------------------------------------------------------------------
-    # 6. VALIDASI DATA
+    # 11. VALIDASI DATA TRAIN
     # -------------------------------------------------------------------------
 
     validate_dataset(
         X=X_train,
         y=y_train,
+        document_ids=train_document_ids,
+        categories=train_categories,
         split_name="Train",
         expected_sequence_length=(
             max_sequence_length
         ),
+        vocabulary_size=vocabulary_size,
     )
+
+    # -------------------------------------------------------------------------
+    # 12. VALIDASI DATA VALIDATION
+    # -------------------------------------------------------------------------
 
     validate_dataset(
         X=X_validation,
         y=y_validation,
+        document_ids=(
+            validation_document_ids
+        ),
+        categories=(
+            validation_categories
+        ),
         split_name="Validation",
         expected_sequence_length=(
             max_sequence_length
         ),
+        vocabulary_size=vocabulary_size,
     )
+
+    # -------------------------------------------------------------------------
+    # 13. VALIDASI TRAIN DAN VALIDATION DISJOINT
+    # -------------------------------------------------------------------------
+
+    validate_split_disjointness(
+        train_document_ids=(
+            train_document_ids
+        ),
+        validation_document_ids=(
+            validation_document_ids
+        ),
+    )
+
+    # -------------------------------------------------------------------------
+    # 14. INFORMASI DATA
+    # -------------------------------------------------------------------------
 
     print(
         "\nShape data:"
@@ -691,6 +1362,24 @@ def train_attention_bilstm(
         f"{y_validation.shape}"
     )
 
+    print(
+        f"Token maksimum train      : "
+        f"{int(X_train.max()):,}"
+    )
+
+    print(
+        f"Token maksimum validation : "
+        f"{int(X_validation.max()):,}"
+    )
+
+    print(
+        "\nValidasi overlap train-validation:"
+    )
+
+    print(
+        "Tidak ditemukan document_id yang sama."
+    )
+
     print_label_distribution(
         y_train,
         "Train",
@@ -702,29 +1391,25 @@ def train_attention_bilstm(
     )
 
     # -------------------------------------------------------------------------
-    # 7. MEMBUAT TF.DATA
+    # 15. MEMBUAT TF.DATA
     # -------------------------------------------------------------------------
 
-    train_dataset = (
-        create_tf_dataset(
-            X=X_train,
-            y=y_train,
-            batch_size=BATCH_SIZE,
-            training=True,
-        )
+    train_dataset = create_tf_dataset(
+        X=X_train,
+        y=y_train,
+        batch_size=BATCH_SIZE,
+        training=True,
     )
 
-    validation_dataset = (
-        create_tf_dataset(
-            X=X_validation,
-            y=y_validation,
-            batch_size=BATCH_SIZE,
-            training=False,
-        )
+    validation_dataset = create_tf_dataset(
+        X=X_validation,
+        y=y_validation,
+        batch_size=BATCH_SIZE,
+        training=False,
     )
 
     # -------------------------------------------------------------------------
-    # 8. MEMBANGUN MODEL
+    # 16. MEMBANGUN MODEL
     # -------------------------------------------------------------------------
 
     print(
@@ -732,38 +1417,28 @@ def train_attention_bilstm(
         "Attention-BiLSTM..."
     )
 
-    model = (
-        build_attention_bilstm_model(
-            vocabulary_size=(
-                vocabulary_size
-            ),
-            max_sequence_length=(
-                max_sequence_length
-            ),
-            num_classes=NUM_CLASSES,
-            embedding_dim=EMBEDDING_DIM,
-            lstm_units=BILSTM_UNITS,
-            attention_units=(
-                ATTENTION_UNITS
-            ),
-            dense_units=DENSE_UNITS,
-            spatial_dropout_rate=(
-                SPATIAL_DROPOUT_RATE
-            ),
-            recurrent_dropout_rate=(
-                RECURRENT_DROPOUT_RATE
-            ),
-            dropout_rate=(
-                DROPOUT_RATE
-            ),
-            learning_rate=(
-                LEARNING_RATE
-            ),
-            model_name=(
-                f"Attention_BiLSTM_"
-                f"{scenario_code}"
-            ),
-        )
+    model = build_attention_bilstm_model(
+        vocabulary_size=vocabulary_size,
+        max_sequence_length=(
+            max_sequence_length
+        ),
+        num_classes=NUM_CLASSES,
+        embedding_dim=EMBEDDING_DIM,
+        lstm_units=BILSTM_UNITS,
+        attention_units=ATTENTION_UNITS,
+        dense_units=DENSE_UNITS,
+        spatial_dropout_rate=(
+            SPATIAL_DROPOUT_RATE
+        ),
+        recurrent_dropout_rate=(
+            RECURRENT_DROPOUT_RATE
+        ),
+        dropout_rate=DROPOUT_RATE,
+        learning_rate=LEARNING_RATE,
+        model_name=(
+            f"Attention_BiLSTM_"
+            f"{scenario_code}"
+        ),
     )
 
     print(
@@ -773,22 +1448,21 @@ def train_attention_bilstm(
     model.summary()
 
     # -------------------------------------------------------------------------
-    # 9. CALLBACK
+    # 17. CALLBACK
     # -------------------------------------------------------------------------
 
-    callbacks = (
-        create_training_callbacks(
-            model_name=(
-                "attention_bilstm"
-            ),
-            scenario_code=(
-                scenario_code
-            ),
-        )
+    callbacks = create_training_callbacks(
+        model_name=MODEL_CODE,
+        scenario_code=scenario_code,
     )
 
+    if not callbacks:
+        raise ValueError(
+            "Daftar callback training kosong."
+        )
+
     # -------------------------------------------------------------------------
-    # 10. TRAINING
+    # 18. TRAINING
     # -------------------------------------------------------------------------
 
     print(
@@ -803,7 +1477,7 @@ def train_attention_bilstm(
         "=" * 72
     )
 
-    start_time = (
+    training_start_time = (
         time.perf_counter()
     )
 
@@ -817,24 +1491,22 @@ def train_attention_bilstm(
         verbose=VERBOSE,
     )
 
-    end_time = (
+    training_end_time = (
         time.perf_counter()
     )
 
     training_time_seconds = (
-        end_time
-        - start_time
+        training_end_time
+        - training_start_time
     )
 
     # -------------------------------------------------------------------------
-    # 11. SIMPAN HISTORY
+    # 19. SIMPAN HISTORY
     # -------------------------------------------------------------------------
 
-    history_dataframe = (
-        save_training_history(
-            history=history,
-            output_path=history_path,
-        )
+    history_dataframe = save_training_history(
+        history=history,
+        output_path=history_path,
     )
 
     best_information = (
@@ -844,7 +1516,83 @@ def train_attention_bilstm(
     )
 
     # -------------------------------------------------------------------------
-    # 12. SIMPAN MODEL FINAL
+    # 20. VALIDASI CHECKPOINT TERBAIK
+    # -------------------------------------------------------------------------
+
+    validate_output_file(
+        file_path=checkpoint_path,
+        description="Checkpoint terbaik",
+    )
+
+    # -------------------------------------------------------------------------
+    # 21. MEMUAT CHECKPOINT TERBAIK
+    # -------------------------------------------------------------------------
+
+    print(
+        "\nMemuat checkpoint terbaik..."
+    )
+
+    best_model = tf.keras.models.load_model(
+        checkpoint_path
+    )
+
+    # -------------------------------------------------------------------------
+    # 22. EVALUASI CHECKPOINT PADA VALIDATION
+    # -------------------------------------------------------------------------
+
+    print(
+        "Memvalidasi checkpoint terbaik "
+        "pada data validation..."
+    )
+
+    best_validation_result = (
+        best_model.evaluate(
+            validation_dataset,
+            verbose=0,
+            return_dict=True,
+        )
+    )
+
+    if "loss" not in best_validation_result:
+        raise KeyError(
+            "Hasil evaluasi checkpoint tidak "
+            "memiliki key loss."
+        )
+
+    if "accuracy" not in best_validation_result:
+        raise KeyError(
+            "Hasil evaluasi checkpoint tidak "
+            "memiliki key accuracy."
+        )
+
+    best_checkpoint_validation_loss = float(
+        best_validation_result[
+            "loss"
+        ]
+    )
+
+    best_checkpoint_validation_accuracy = float(
+        best_validation_result[
+            "accuracy"
+        ]
+    )
+
+    if not np.isfinite(
+        best_checkpoint_validation_loss
+    ):
+        raise ValueError(
+            "Validation loss checkpoint tidak valid."
+        )
+
+    if not np.isfinite(
+        best_checkpoint_validation_accuracy
+    ):
+        raise ValueError(
+            "Validation accuracy checkpoint tidak valid."
+        )
+
+    # -------------------------------------------------------------------------
+    # 23. SIMPAN MODEL FINAL DARI CHECKPOINT TERBAIK
     # -------------------------------------------------------------------------
 
     final_model_path.parent.mkdir(
@@ -852,20 +1600,33 @@ def train_attention_bilstm(
         exist_ok=True,
     )
 
-    model.save(
+    best_model.save(
         final_model_path
     )
 
+    validate_output_file(
+        file_path=final_model_path,
+        description="Model final",
+    )
+
     # -------------------------------------------------------------------------
-    # 13. SIMPAN RINGKASAN TRAINING
+    # 24. TRAINING SUMMARY
     # -------------------------------------------------------------------------
 
+    finished_at = datetime.now()
+
     training_summary = {
+        "status":
+            "success",
+
         "experiment_name":
             experiment_name,
 
         "model":
-            "Attention-BiLSTM",
+            MODEL_DISPLAY_NAME,
+
+        "model_code":
+            MODEL_CODE,
 
         "dataset":
             scenario_config[
@@ -880,6 +1641,16 @@ def train_attention_bilstm(
                 "scenario_name"
             ],
 
+        "started_at":
+            started_at.isoformat(
+                timespec="seconds"
+            ),
+
+        "finished_at":
+            finished_at.isoformat(
+                timespec="seconds"
+            ),
+
         "jumlah_train":
             int(
                 len(X_train)
@@ -890,9 +1661,32 @@ def train_attention_bilstm(
                 len(X_validation)
             ),
 
+        "train_label_distribution":
+            get_label_distribution(
+                y_train
+            ),
+
+        "validation_label_distribution":
+            get_label_distribution(
+                y_validation
+            ),
+
+        "train_validation_document_overlap":
+            0,
+
         "vocabulary_size":
             int(
                 vocabulary_size
+            ),
+
+        "max_token_id_train":
+            int(
+                X_train.max()
+            ),
+
+        "max_token_id_validation":
+            int(
+                X_validation.max()
             ),
 
         "max_sequence_length":
@@ -901,30 +1695,82 @@ def train_attention_bilstm(
             ),
 
         "num_classes":
-            NUM_CLASSES,
+            int(
+                NUM_CLASSES
+            ),
 
         "embedding_dim":
-            EMBEDDING_DIM,
+            int(
+                EMBEDDING_DIM
+            ),
 
         "lstm_units_per_direction":
-            BILSTM_UNITS,
+            int(
+                BILSTM_UNITS
+            ),
+
+        "bilstm_output_units":
+            int(
+                BILSTM_UNITS * 2
+            ),
 
         "attention_units":
-            ATTENTION_UNITS,
+            int(
+                ATTENTION_UNITS
+            ),
+
+        "dense_units":
+            int(
+                DENSE_UNITS
+            ),
+
+        "spatial_dropout_rate":
+            float(
+                SPATIAL_DROPOUT_RATE
+            ),
+
+        "recurrent_dropout_rate":
+            float(
+                RECURRENT_DROPOUT_RATE
+            ),
+
+        "dropout_rate":
+            float(
+                DROPOUT_RATE
+            ),
 
         "epochs_maximum":
-            EPOCHS,
+            int(
+                EPOCHS
+            ),
 
         "epochs_completed":
             int(
-                len(history_dataframe)
+                len(
+                    history_dataframe
+                )
             ),
 
         "batch_size":
-            BATCH_SIZE,
+            int(
+                BATCH_SIZE
+            ),
 
         "learning_rate_initial":
-            LEARNING_RATE,
+            float(
+                LEARNING_RATE
+            ),
+
+        "random_seed":
+            int(
+                RANDOM_SEED
+            ),
+
+        "monitor":
+            "val_loss",
+
+        "selection_mode":
+            "min",
 
         "training_time_seconds":
             round(
@@ -941,6 +1787,18 @@ def train_attention_bilstm(
 
         **best_information,
 
+        "best_checkpoint_validation_loss":
+            best_checkpoint_validation_loss,
+
+        "best_checkpoint_validation_accuracy":
+            best_checkpoint_validation_accuracy,
+
+        "final_model_source":
+            "best_validation_loss_checkpoint",
+
+        "tensorflow_environment":
+            get_device_information(),
+
         "checkpoint_path":
             str(
                 checkpoint_path
@@ -955,6 +1813,17 @@ def train_attention_bilstm(
             str(
                 history_path
             ),
+
+        "summary_path":
+            str(
+                summary_path
+            ),
+
+        "test_set_used_during_training":
+            False,
+
+        "k4_used":
+            False,
     }
 
     save_training_summary(
@@ -962,8 +1831,13 @@ def train_attention_bilstm(
         output_path=summary_path,
     )
 
+    validate_output_file(
+        file_path=summary_path,
+        description="Training summary",
+    )
+
     # -------------------------------------------------------------------------
-    # 14. TAMPILKAN HASIL
+    # 25. MENAMPILKAN HASIL
     # -------------------------------------------------------------------------
 
     print(
@@ -1014,7 +1888,21 @@ def train_attention_bilstm(
     )
 
     print(
-        f"Waktu training      : "
+        "\nValidasi checkpoint terbaik:"
+    )
+
+    print(
+        f"Validation loss     : "
+        f"{best_checkpoint_validation_loss:.6f}"
+    )
+
+    print(
+        f"Validation accuracy : "
+        f"{best_checkpoint_validation_accuracy:.4f}"
+    )
+
+    print(
+        f"\nWaktu training      : "
         f"{training_time_seconds / 60:.2f} menit"
     )
 
@@ -1027,7 +1915,7 @@ def train_attention_bilstm(
     )
 
     print(
-        "\nModel final:"
+        "\nModel final dari checkpoint terbaik:"
     )
 
     print(
@@ -1062,33 +1950,74 @@ def train_attention_bilstm(
         "=" * 72
     )
 
+    # -------------------------------------------------------------------------
+    # 26. MEMBERSIHKAN MEMORI
+    # -------------------------------------------------------------------------
+
+    del model
+    del best_model
+    del train_dataset
+    del validation_dataset
+    del history
+
+    del X_train
+    del y_train
+    del train_document_ids
+    del train_categories
+
+    del X_validation
+    del y_validation
+    del validation_document_ids
+    del validation_categories
+
+    tf.keras.backend.clear_session()
+
+    gc.collect()
+
+
+# =============================================================================
+# ARGUMENT PARSER
+# =============================================================================
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Membaca kode skenario dari command line.
+    """
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Melatih model Attention-BiLSTM "
+            "untuk satu skenario."
+        )
+    )
+
+    parser.add_argument(
+        "scenario",
+        type=str.upper,
+        choices=VALID_SCENARIOS,
+        help=(
+            "Kode skenario: K1, K2, K3, A1, atau A2."
+        ),
+    )
+
+    return parser.parse_args()
+
 
 # =============================================================================
 # MAIN
 # =============================================================================
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    Menjalankan training berdasarkan argumen command line.
+    """
 
-    if len(sys.argv) >= 2:
-        selected_scenario = (
-            sys.argv[1]
-        )
-
-    else:
-        selected_scenario = "K1"
-
-        print(
-            "\nTidak ada kode skenario "
-            "yang diberikan."
-        )
-
-        print(
-            "Menggunakan K1 sebagai "
-            "default pipeline validation.\n"
-        )
+    arguments = parse_arguments()
 
     train_attention_bilstm(
-        scenario_code=(
-            selected_scenario
-        )
+        scenario_code=arguments.scenario
     )
+
+
+if __name__ == "__main__":
+    main()

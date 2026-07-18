@@ -5,21 +5,21 @@
 # 6_evaluation/04_comparative_ablation.py
 #
 # Tujuan:
-# 1. Membandingkan CNN dan Attention-BiLSTM.
+# 1. Membandingkan CNN dan Attention-BiLSTM pada skenario yang sama.
 # 2. Membandingkan skenario representasi teks.
-# 3. Menganalisis pengaruh penambahan description.
-# 4. Menganalisis pengaruh keyword YAKE.
+# 3. Menganalisis perubahan K1 -> K2 dan A1 -> A2.
+# 4. Menganalisis pengaruh keyword YAKE melalui K2 -> K3.
 # 5. Membandingkan efisiensi waktu inferensi.
 #
-# Eksperimen utama:
+# Eksperimen final:
 # Kompas:
-# - K1 = Title
-# - K2 = Title + Description
-# - K3 = Title + Description + Keyword YAKE
+# - K1 = Title, sequence length 20
+# - K2 = Title + Description, sequence length 60
+# - K3 = Title + Description + Keyword YAKE, sequence length 60
 #
 # AG News:
-# - A1 = Title
-# - A2 = Title + Description
+# - A1 = Title, sequence length 60
+# - A2 = Title + Description, sequence length 60
 #
 # Model:
 # - CNN
@@ -30,16 +30,19 @@
 #
 # Output:
 # - Tabel perbandingan model
-# - Tabel analisis skenario
-# - Tabel pengaruh description
-# - Tabel pengaruh YAKE
-# - Tabel model terbaik
-# - Grafik accuracy, macro F1, dan inference time
+# - Tabel perbandingan skenario
+# - Tabel analisis description
+# - Tabel analisis YAKE
+# - Tabel model terbaik per dataset
+# - Tabel efisiensi inferensi
+# - Ringkasan temuan penelitian
+# - Grafik accuracy, macro F1, description, YAKE, dan inferensi
 # =============================================================================
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -143,6 +146,14 @@ SCENARIO_ORDER = {
     "A2": 2,
 }
 
+SEQUENCE_LENGTHS = {
+    "K1": 20,
+    "K2": 60,
+    "K3": 60,
+    "A1": 60,
+    "A2": 60,
+}
+
 MAIN_EXPERIMENTS = [
     "cnn_k1",
     "cnn_k2",
@@ -156,6 +167,10 @@ MAIN_EXPERIMENTS = [
     "attention_bilstm_a2",
 ]
 
+MODEL_COMPARISON_TOLERANCE = 1e-12
+
+INFERENCE_COMPARISON_TOLERANCE = 1e-6
+
 
 # =============================================================================
 # MEMBUAT FOLDER OUTPUT
@@ -163,32 +178,39 @@ MAIN_EXPERIMENTS = [
 
 def create_output_directories() -> None:
     """
-    Membuat folder output jika belum tersedia.
+    Membuat seluruh folder output yang dibutuhkan.
     """
 
-    TABLES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    directories = [
+        TABLES_DIR,
+        FIGURES_DIR,
+    ]
 
-    FIGURES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    for directory in directories:
+        directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
 
 # =============================================================================
-# MEMUAT METRIK
+# MEMUAT DAN MEMVALIDASI METRIK
 # =============================================================================
 
 def load_metrics() -> pd.DataFrame:
     """
-    Membaca hasil evaluasi test set.
+    Membaca dan memvalidasi hasil evaluasi test set final.
     """
 
     if not METRICS_PATH.exists():
         raise FileNotFoundError(
             "File metrik evaluasi tidak ditemukan:\n"
+            f"{METRICS_PATH}"
+        )
+
+    if METRICS_PATH.stat().st_size == 0:
+        raise ValueError(
+            "File metrik evaluasi ditemukan, tetapi kosong:\n"
             f"{METRICS_PATH}"
         )
 
@@ -204,6 +226,8 @@ def load_metrics() -> pd.DataFrame:
         "scenario_code",
         "scenario_name",
         "jumlah_test",
+        "correct_predictions",
+        "incorrect_predictions",
         "accuracy",
         "precision_macro",
         "recall_macro",
@@ -221,24 +245,91 @@ def load_metrics() -> pd.DataFrame:
     if missing_columns:
         raise KeyError(
             "Kolom metrik belum lengkap.\n"
-            f"Kolom hilang: {missing_columns}"
+            f"Kolom hilang: {sorted(missing_columns)}"
         )
 
-    dataframe = dataframe[
-        dataframe["experiment_name"].isin(
-            MAIN_EXPERIMENTS
-        )
-    ].copy()
+    dataframe = dataframe.copy()
 
-    if len(dataframe) != 10:
-        print(
-            "Peringatan: jumlah eksperimen utama "
-            f"yang ditemukan adalah {len(dataframe)}, "
-            "seharusnya 10."
+    string_columns = [
+        "experiment_name",
+        "model",
+        "dataset",
+        "scenario_code",
+        "scenario_name",
+    ]
+
+    for column in string_columns:
+        dataframe[column] = (
+            dataframe[column]
+            .astype(str)
+            .str.strip()
+        )
+
+    expected_experiments = set(
+        MAIN_EXPERIMENTS
+    )
+
+    available_experiments = set(
+        dataframe[
+            "experiment_name"
+        ].tolist()
+    )
+
+    missing_experiments = (
+        expected_experiments
+        - available_experiments
+    )
+
+    unexpected_experiments = (
+        available_experiments
+        - expected_experiments
+    )
+
+    duplicate_experiments = (
+        dataframe.loc[
+            dataframe[
+                "experiment_name"
+            ].duplicated(
+                keep=False
+            ),
+            "experiment_name",
+        ]
+        .unique()
+        .tolist()
+    )
+
+    if missing_experiments:
+        raise ValueError(
+            "Metrik belum mencakup seluruh eksperimen final.\n"
+            f"Eksperimen hilang: "
+            f"{sorted(missing_experiments)}"
+        )
+
+    if unexpected_experiments:
+        raise ValueError(
+            "Ditemukan eksperimen di luar konfigurasi final.\n"
+            f"Eksperimen tambahan: "
+            f"{sorted(unexpected_experiments)}"
+        )
+
+    if duplicate_experiments:
+        raise ValueError(
+            "Ditemukan eksperimen duplikat.\n"
+            f"Eksperimen: "
+            f"{sorted(duplicate_experiments)}"
+        )
+
+    if len(dataframe) != len(MAIN_EXPERIMENTS):
+        raise ValueError(
+            "Jumlah baris eksperimen tidak sesuai.\n"
+            f"Expected: {len(MAIN_EXPERIMENTS)}\n"
+            f"Actual  : {len(dataframe)}"
         )
 
     numeric_columns = [
         "jumlah_test",
+        "correct_predictions",
+        "incorrect_predictions",
         "accuracy",
         "precision_macro",
         "recall_macro",
@@ -254,29 +345,269 @@ def load_metrics() -> pd.DataFrame:
             errors="coerce",
         )
 
-    dataframe = dataframe.dropna(
-        subset=[
-            "accuracy",
-            "f1_macro",
-            "inference_time_seconds",
+    invalid_numeric_rows = dataframe[
+        numeric_columns
+    ].isna().any(
+        axis=1
+    )
+
+    if invalid_numeric_rows.any():
+        invalid_experiments = (
+            dataframe.loc[
+                invalid_numeric_rows,
+                "experiment_name",
+            ]
+            .tolist()
+        )
+
+        raise ValueError(
+            "Ditemukan nilai numerik kosong atau tidak valid.\n"
+            f"Eksperimen: {invalid_experiments}"
+        )
+
+    integer_columns = [
+        "jumlah_test",
+        "correct_predictions",
+        "incorrect_predictions",
+    ]
+
+    for column in integer_columns:
+        non_integer = (
+            dataframe[column]
+            % 1
+            != 0
+        )
+
+        if non_integer.any():
+            invalid_experiments = (
+                dataframe.loc[
+                    non_integer,
+                    "experiment_name",
+                ]
+                .tolist()
+            )
+
+            raise ValueError(
+                f"Kolom {column} harus berupa bilangan bulat.\n"
+                f"Eksperimen: {invalid_experiments}"
+            )
+
+        dataframe[column] = (
+            dataframe[column]
+            .astype(int)
+        )
+
+    if (
+        dataframe[
+            integer_columns
+        ]
+        < 0
+    ).any().any():
+        raise ValueError(
+            "Jumlah data dan jumlah prediksi tidak boleh negatif."
+        )
+
+    invalid_total_rows = (
+        dataframe[
+            "correct_predictions"
+        ]
+        + dataframe[
+            "incorrect_predictions"
+        ]
+        != dataframe[
+            "jumlah_test"
         ]
     )
+
+    if invalid_total_rows.any():
+        invalid_experiments = (
+            dataframe.loc[
+                invalid_total_rows,
+                "experiment_name",
+            ]
+            .tolist()
+        )
+
+        raise ValueError(
+            "Jumlah prediksi benar dan salah tidak sama "
+            "dengan jumlah test.\n"
+            f"Eksperimen: {invalid_experiments}"
+        )
+
+    bounded_metric_columns = [
+        "accuracy",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+    ]
+
+    for column in bounded_metric_columns:
+        invalid_values = (
+            (dataframe[column] < 0.0)
+            | (dataframe[column] > 1.0)
+        )
+
+        if invalid_values.any():
+            invalid_experiments = (
+                dataframe.loc[
+                    invalid_values,
+                    "experiment_name",
+                ]
+                .tolist()
+            )
+
+            raise ValueError(
+                f"Ditemukan nilai {column} di luar rentang 0 sampai 1.\n"
+                f"Eksperimen: {invalid_experiments}"
+            )
+
+    if (
+        dataframe[
+            "log_loss"
+        ]
+        < 0.0
+    ).any():
+        raise ValueError(
+            "Ditemukan nilai log loss negatif."
+        )
+
+    if (
+        dataframe[
+            "inference_time_seconds"
+        ]
+        <= 0.0
+    ).any():
+        raise ValueError(
+            "Waktu inferensi harus lebih besar dari nol."
+        )
+
+    if (
+        dataframe[
+            "average_inference_ms_per_sample"
+        ]
+        <= 0.0
+    ).any():
+        raise ValueError(
+            "Rata-rata waktu inferensi per sampel "
+            "harus lebih besar dari nol."
+        )
+
+    calculated_accuracy = np.divide(
+        dataframe[
+            "correct_predictions"
+        ].to_numpy(
+            dtype=float
+        ),
+        dataframe[
+            "jumlah_test"
+        ].to_numpy(
+            dtype=float
+        ),
+        out=np.zeros(
+            len(dataframe),
+            dtype=float,
+        ),
+        where=(
+            dataframe[
+                "jumlah_test"
+            ].to_numpy(
+                dtype=float
+            )
+            != 0
+        ),
+    )
+
+    accuracy_mismatch = ~np.isclose(
+        dataframe[
+            "accuracy"
+        ].to_numpy(
+            dtype=float
+        ),
+        calculated_accuracy,
+        atol=1e-12,
+    )
+
+    if accuracy_mismatch.any():
+        invalid_experiments = (
+            dataframe.loc[
+                accuracy_mismatch,
+                "experiment_name",
+            ]
+            .tolist()
+        )
+
+        raise ValueError(
+            "Accuracy tidak konsisten dengan jumlah prediksi benar.\n"
+            f"Eksperimen: {invalid_experiments}"
+        )
+
+    expected_models = set(
+        MODEL_DISPLAY_NAMES.keys()
+    )
+
+    actual_models = set(
+        dataframe[
+            "model"
+        ].unique()
+    )
+
+    if actual_models != expected_models:
+        raise ValueError(
+            "Daftar model pada metrik tidak sesuai.\n"
+            f"Expected: {sorted(expected_models)}\n"
+            f"Actual  : {sorted(actual_models)}"
+        )
+
+    expected_scenarios = set(
+        SCENARIO_DISPLAY_NAMES.keys()
+    )
+
+    actual_scenarios = set(
+        dataframe[
+            "scenario_code"
+        ].unique()
+    )
+
+    if actual_scenarios != expected_scenarios:
+        raise ValueError(
+            "Daftar skenario pada metrik tidak sesuai.\n"
+            f"Expected: {sorted(expected_scenarios)}\n"
+            f"Actual  : {sorted(actual_scenarios)}"
+        )
 
     dataframe["model_display"] = (
         dataframe["model"]
         .map(MODEL_DISPLAY_NAMES)
-        .fillna(dataframe["model"])
     )
 
     dataframe["scenario_display"] = (
         dataframe["scenario_code"]
         .map(SCENARIO_DISPLAY_NAMES)
-        .fillna(dataframe["scenario_name"])
     )
 
     dataframe["scenario_order"] = (
         dataframe["scenario_code"]
         .map(SCENARIO_ORDER)
+    )
+
+    dataframe["sequence_length"] = (
+        dataframe["scenario_code"]
+        .map(SEQUENCE_LENGTHS)
+        .astype(int)
+    )
+
+    dataframe = (
+        dataframe
+        .sort_values(
+            [
+                "dataset",
+                "scenario_order",
+                "model_display",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
     return dataframe
@@ -294,7 +625,9 @@ def build_model_comparison(
     pada skenario yang sama.
     """
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
     groups = metrics.groupby(
         [
@@ -311,55 +644,105 @@ def build_model_comparison(
         scenario_name,
     ), group in groups:
 
-        cnn_row = group[
-            group["model"] == "cnn"
+        cnn_rows = group[
+            group["model"]
+            == "cnn"
         ]
 
-        bilstm_row = group[
-            group["model"] == "attention_bilstm"
+        bilstm_rows = group[
+            group["model"]
+            == "attention_bilstm"
         ]
 
-        if cnn_row.empty or bilstm_row.empty:
-            continue
+        if (
+            len(cnn_rows) != 1
+            or len(bilstm_rows) != 1
+        ):
+            raise ValueError(
+                "Perbandingan model tidak lengkap untuk "
+                f"{dataset_name} {scenario_code}."
+            )
 
-        cnn_row = cnn_row.iloc[0]
-        bilstm_row = bilstm_row.iloc[0]
+        cnn_row = cnn_rows.iloc[0]
+        bilstm_row = bilstm_rows.iloc[0]
 
         accuracy_difference = (
-            float(cnn_row["accuracy"])
-            - float(bilstm_row["accuracy"])
+            float(
+                cnn_row[
+                    "accuracy"
+                ]
+            )
+            - float(
+                bilstm_row[
+                    "accuracy"
+                ]
+            )
         )
 
         f1_difference = (
-            float(cnn_row["f1_macro"])
-            - float(bilstm_row["f1_macro"])
+            float(
+                cnn_row[
+                    "f1_macro"
+                ]
+            )
+            - float(
+                bilstm_row[
+                    "f1_macro"
+                ]
+            )
         )
 
-        inference_difference = (
-            float(cnn_row["inference_time_seconds"])
-            - float(bilstm_row["inference_time_seconds"])
+        inference_difference_ms = (
+            float(
+                cnn_row[
+                    "average_inference_ms_per_sample"
+                ]
+            )
+            - float(
+                bilstm_row[
+                    "average_inference_ms_per_sample"
+                ]
+            )
         )
 
-        if accuracy_difference > 0:
-            accuracy_winner = "CNN"
-        elif accuracy_difference < 0:
-            accuracy_winner = "Attention-BiLSTM"
-        else:
+        if np.isclose(
+            accuracy_difference,
+            0.0,
+            atol=MODEL_COMPARISON_TOLERANCE,
+        ):
             accuracy_winner = "Sama"
 
-        if f1_difference > 0:
-            f1_winner = "CNN"
-        elif f1_difference < 0:
-            f1_winner = "Attention-BiLSTM"
+        elif accuracy_difference > 0.0:
+            accuracy_winner = "CNN"
+
         else:
+            accuracy_winner = "Attention-BiLSTM"
+
+        if np.isclose(
+            f1_difference,
+            0.0,
+            atol=MODEL_COMPARISON_TOLERANCE,
+        ):
             f1_winner = "Sama"
 
-        if inference_difference < 0:
-            faster_model = "CNN"
-        elif inference_difference > 0:
-            faster_model = "Attention-BiLSTM"
+        elif f1_difference > 0.0:
+            f1_winner = "CNN"
+
         else:
+            f1_winner = "Attention-BiLSTM"
+
+        if np.isclose(
+            inference_difference_ms,
+            0.0,
+            atol=INFERENCE_COMPARISON_TOLERANCE,
+        ):
             faster_model = "Sama"
+
+        elif inference_difference_ms < 0.0:
+            faster_model = "CNN"
+
+        else:
+            faster_model = "Attention-BiLSTM"
 
         rows.append(
             {
@@ -372,50 +755,86 @@ def build_model_comparison(
                 "scenario_name":
                     scenario_name,
 
+                "sequence_length":
+                    int(
+                        cnn_row[
+                            "sequence_length"
+                        ]
+                    ),
+
                 "cnn_accuracy":
-                    float(cnn_row["accuracy"]),
+                    float(
+                        cnn_row[
+                            "accuracy"
+                        ]
+                    ),
 
                 "attention_bilstm_accuracy":
-                    float(bilstm_row["accuracy"]),
+                    float(
+                        bilstm_row[
+                            "accuracy"
+                        ]
+                    ),
 
                 "accuracy_difference_cnn_minus_bilstm":
                     accuracy_difference,
+
+                "accuracy_difference_percentage_point":
+                    accuracy_difference
+                    * 100.0,
 
                 "accuracy_winner":
                     accuracy_winner,
 
                 "cnn_f1_macro":
-                    float(cnn_row["f1_macro"]),
+                    float(
+                        cnn_row[
+                            "f1_macro"
+                        ]
+                    ),
 
                 "attention_bilstm_f1_macro":
-                    float(bilstm_row["f1_macro"]),
+                    float(
+                        bilstm_row[
+                            "f1_macro"
+                        ]
+                    ),
 
                 "f1_difference_cnn_minus_bilstm":
                     f1_difference,
 
+                "f1_difference_percentage_point":
+                    f1_difference
+                    * 100.0,
+
                 "f1_winner":
                     f1_winner,
 
-                "cnn_inference_seconds":
+                "cnn_inference_ms_per_sample":
                     float(
                         cnn_row[
-                            "inference_time_seconds"
+                            "average_inference_ms_per_sample"
                         ]
                     ),
 
-                "attention_bilstm_inference_seconds":
+                "attention_bilstm_inference_ms_per_sample":
                     float(
                         bilstm_row[
-                            "inference_time_seconds"
+                            "average_inference_ms_per_sample"
                         ]
                     ),
+
+                "inference_difference_ms_cnn_minus_bilstm":
+                    inference_difference_ms,
 
                 "faster_model":
                     faster_model,
             }
         )
 
-    result = pd.DataFrame(rows)
+    result = pd.DataFrame(
+        rows
+    )
 
     if not result.empty:
         result["scenario_order"] = (
@@ -432,9 +851,13 @@ def build_model_comparison(
                 ]
             )
             .drop(
-                columns=["scenario_order"]
+                columns=[
+                    "scenario_order"
+                ]
             )
-            .reset_index(drop=True)
+            .reset_index(
+                drop=True
+            )
         )
 
     return result
@@ -448,7 +871,7 @@ def build_scenario_comparison(
     metrics: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Membandingkan performa skenario dalam setiap model.
+    Menyusun tabel performa setiap model dan skenario.
     """
 
     columns = [
@@ -457,6 +880,10 @@ def build_scenario_comparison(
         "dataset",
         "scenario_code",
         "scenario_display",
+        "sequence_length",
+        "jumlah_test",
+        "correct_predictions",
+        "incorrect_predictions",
         "accuracy",
         "precision_macro",
         "recall_macro",
@@ -473,8 +900,11 @@ def build_scenario_comparison(
 
     result = result.rename(
         columns={
-            "model_display": "model",
-            "scenario_display": "scenario_name",
+            "model_display":
+                "model",
+
+            "scenario_display":
+                "scenario_name",
         }
     )
 
@@ -488,9 +918,13 @@ def build_scenario_comparison(
             ]
         )
         .drop(
-            columns=["scenario_order"]
+            columns=[
+                "scenario_order"
+            ]
         )
-        .reset_index(drop=True)
+        .reset_index(
+            drop=True
+        )
     )
 
     return result
@@ -504,9 +938,13 @@ def build_description_analysis(
     metrics: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Menganalisis perubahan dari:
-    Kompas K1 -> K2
-    AG News A1 -> A2
+    Menganalisis perubahan K1 -> K2 dan A1 -> A2.
+
+    Catatan metodologis:
+    - Kompas K1 dan K2 memiliki sequence length berbeda,
+      sehingga kontribusi description belum sepenuhnya terisolasi.
+    - AG News A1 dan A2 memiliki sequence length sama,
+      sehingga perbandingannya lebih terkontrol.
     """
 
     comparison_pairs = [
@@ -517,6 +955,9 @@ def build_description_analysis(
             "comparison": (
                 "Title vs Title + Description"
             ),
+            "baseline_sequence_length": 20,
+            "treatment_sequence_length": 60,
+            "controlled_sequence_length": False,
         },
         {
             "dataset": "AG News",
@@ -525,19 +966,26 @@ def build_description_analysis(
             "comparison": (
                 "Title vs Title + Description"
             ),
+            "baseline_sequence_length": 60,
+            "treatment_sequence_length": 60,
+            "controlled_sequence_length": True,
         },
     ]
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
     for pair in comparison_pairs:
-        dataset_name = pair["dataset"]
+        dataset_name = pair[
+            "dataset"
+        ]
 
         for model_name in [
             "cnn",
             "attention_bilstm",
         ]:
-            baseline_row = metrics[
+            baseline_rows = metrics[
                 (
                     metrics["dataset"]
                     == dataset_name
@@ -552,7 +1000,7 @@ def build_description_analysis(
                 )
             ]
 
-            treatment_row = metrics[
+            treatment_rows = metrics[
                 (
                     metrics["dataset"]
                     == dataset_name
@@ -568,42 +1016,97 @@ def build_description_analysis(
             ]
 
             if (
-                baseline_row.empty
-                or treatment_row.empty
+                len(baseline_rows) != 1
+                or len(treatment_rows) != 1
             ):
-                continue
+                raise ValueError(
+                    "Data analisis description tidak lengkap untuk "
+                    f"{dataset_name} {model_name}."
+                )
 
-            baseline_row = baseline_row.iloc[0]
-            treatment_row = treatment_row.iloc[0]
+            baseline_row = (
+                baseline_rows.iloc[0]
+            )
+
+            treatment_row = (
+                treatment_rows.iloc[0]
+            )
 
             accuracy_change = (
-                float(treatment_row["accuracy"])
-                - float(baseline_row["accuracy"])
+                float(
+                    treatment_row[
+                        "accuracy"
+                    ]
+                )
+                - float(
+                    baseline_row[
+                        "accuracy"
+                    ]
+                )
+            )
+
+            precision_change = (
+                float(
+                    treatment_row[
+                        "precision_macro"
+                    ]
+                )
+                - float(
+                    baseline_row[
+                        "precision_macro"
+                    ]
+                )
+            )
+
+            recall_change = (
+                float(
+                    treatment_row[
+                        "recall_macro"
+                    ]
+                )
+                - float(
+                    baseline_row[
+                        "recall_macro"
+                    ]
+                )
             )
 
             f1_change = (
-                float(treatment_row["f1_macro"])
-                - float(baseline_row["f1_macro"])
-            )
-
-            error_before = (
-                int(baseline_row["jumlah_test"])
-                - int(
-                    round(
-                        baseline_row["accuracy"]
-                        * baseline_row["jumlah_test"]
-                    )
+                float(
+                    treatment_row[
+                        "f1_macro"
+                    ]
+                )
+                - float(
+                    baseline_row[
+                        "f1_macro"
+                    ]
                 )
             )
 
-            error_after = (
-                int(treatment_row["jumlah_test"])
-                - int(
-                    round(
-                        treatment_row["accuracy"]
-                        * treatment_row["jumlah_test"]
-                    )
+            log_loss_change = (
+                float(
+                    treatment_row[
+                        "log_loss"
+                    ]
                 )
+                - float(
+                    baseline_row[
+                        "log_loss"
+                    ]
+                )
+            )
+
+            error_before = int(
+                baseline_row[
+                    "incorrect_predictions"
+                ]
+            )
+
+            error_after = int(
+                treatment_row[
+                    "incorrect_predictions"
+                ]
             )
 
             error_reduction = (
@@ -611,17 +1114,49 @@ def build_description_analysis(
                 - error_after
             )
 
-            if accuracy_change > 0:
-                interpretation = (
-                    "Description meningkatkan performa."
-                )
-            elif accuracy_change < 0:
-                interpretation = (
-                    "Description menurunkan performa."
-                )
+            relative_error_reduction_percent = (
+                error_reduction
+                / error_before
+                * 100.0
+                if error_before > 0
+                else 0.0
+            )
+
+            if accuracy_change > 0.0:
+                if pair[
+                    "controlled_sequence_length"
+                ]:
+                    interpretation = (
+                        "Penambahan description meningkatkan performa "
+                        "pada sequence length yang sama."
+                    )
+
+                else:
+                    interpretation = (
+                        "Representasi Title + Description menghasilkan "
+                        "performa lebih tinggi, tetapi perubahan juga "
+                        "disertai peningkatan sequence length sehingga "
+                        "kontribusi description belum sepenuhnya terisolasi."
+                    )
+
+            elif accuracy_change < 0.0:
+                if pair[
+                    "controlled_sequence_length"
+                ]:
+                    interpretation = (
+                        "Penambahan description menurunkan performa "
+                        "pada sequence length yang sama."
+                    )
+
+                else:
+                    interpretation = (
+                        "Representasi treatment menghasilkan performa "
+                        "lebih rendah, tetapi sequence length juga berubah."
+                    )
+
             else:
                 interpretation = (
-                    "Description tidak mengubah accuracy."
+                    "Tidak ditemukan perubahan accuracy."
                 )
 
             rows.append(
@@ -635,13 +1170,34 @@ def build_description_analysis(
                         ],
 
                     "comparison":
-                        pair["comparison"],
+                        pair[
+                            "comparison"
+                        ],
 
                     "baseline_scenario":
-                        pair["baseline"],
+                        pair[
+                            "baseline"
+                        ],
 
                     "treatment_scenario":
-                        pair["treatment"],
+                        pair[
+                            "treatment"
+                        ],
+
+                    "baseline_sequence_length":
+                        pair[
+                            "baseline_sequence_length"
+                        ],
+
+                    "treatment_sequence_length":
+                        pair[
+                            "treatment_sequence_length"
+                        ],
+
+                    "controlled_sequence_length":
+                        pair[
+                            "controlled_sequence_length"
+                        ],
 
                     "baseline_accuracy":
                         float(
@@ -661,7 +1217,14 @@ def build_description_analysis(
                         accuracy_change,
 
                     "accuracy_change_percentage_point":
-                        accuracy_change * 100,
+                        accuracy_change
+                        * 100.0,
+
+                    "precision_macro_change":
+                        precision_change,
+
+                    "recall_macro_change":
+                        recall_change,
 
                     "baseline_f1_macro":
                         float(
@@ -680,6 +1243,9 @@ def build_description_analysis(
                     "f1_change":
                         f1_change,
 
+                    "log_loss_change":
+                        log_loss_change,
+
                     "incorrect_before":
                         error_before,
 
@@ -689,12 +1255,33 @@ def build_description_analysis(
                     "error_reduction":
                         error_reduction,
 
+                    "relative_error_reduction_percent":
+                        relative_error_reduction_percent,
+
                     "interpretation":
                         interpretation,
                 }
             )
 
-    return pd.DataFrame(rows)
+    result = pd.DataFrame(
+        rows
+    )
+
+    if not result.empty:
+        result = (
+            result
+            .sort_values(
+                [
+                    "dataset",
+                    "model",
+                ]
+            )
+            .reset_index(
+                drop=True
+            )
+        )
+
+    return result
 
 
 # =============================================================================
@@ -705,19 +1292,22 @@ def build_yake_analysis(
     metrics: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Membandingkan K2 dan K3.
+    Membandingkan Kompas K2 dan K3.
 
-    K2 dan K3 menggunakan sequence length yang sama,
-    yaitu 60, sehingga analisis lebih terkontrol.
+    K2 dan K3 menggunakan split, vocabulary,
+    dan sequence length yang sama sehingga
+    perbandingan lebih terkontrol.
     """
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
     for model_name in [
         "cnn",
         "attention_bilstm",
     ]:
-        k2_row = metrics[
+        k2_rows = metrics[
             (
                 metrics["dataset"]
                 == "Kompas"
@@ -732,7 +1322,7 @@ def build_yake_analysis(
             )
         ]
 
-        k3_row = metrics[
+        k3_rows = metrics[
             (
                 metrics["dataset"]
                 == "Kompas"
@@ -747,55 +1337,94 @@ def build_yake_analysis(
             )
         ]
 
-        if k2_row.empty or k3_row.empty:
-            continue
+        if (
+            len(k2_rows) != 1
+            or len(k3_rows) != 1
+        ):
+            raise ValueError(
+                "Data analisis YAKE tidak lengkap untuk "
+                f"{model_name}."
+            )
 
-        k2_row = k2_row.iloc[0]
-        k3_row = k3_row.iloc[0]
+        k2_row = k2_rows.iloc[0]
+
+        k3_row = k3_rows.iloc[0]
 
         accuracy_change = (
-            float(k3_row["accuracy"])
-            - float(k2_row["accuracy"])
+            float(
+                k3_row[
+                    "accuracy"
+                ]
+            )
+            - float(
+                k2_row[
+                    "accuracy"
+                ]
+            )
         )
 
         precision_change = (
-            float(k3_row["precision_macro"])
-            - float(k2_row["precision_macro"])
+            float(
+                k3_row[
+                    "precision_macro"
+                ]
+            )
+            - float(
+                k2_row[
+                    "precision_macro"
+                ]
+            )
         )
 
         recall_change = (
-            float(k3_row["recall_macro"])
-            - float(k2_row["recall_macro"])
+            float(
+                k3_row[
+                    "recall_macro"
+                ]
+            )
+            - float(
+                k2_row[
+                    "recall_macro"
+                ]
+            )
         )
 
         f1_change = (
-            float(k3_row["f1_macro"])
-            - float(k2_row["f1_macro"])
+            float(
+                k3_row[
+                    "f1_macro"
+                ]
+            )
+            - float(
+                k2_row[
+                    "f1_macro"
+                ]
+            )
         )
 
         log_loss_change = (
-            float(k3_row["log_loss"])
-            - float(k2_row["log_loss"])
-        )
-
-        incorrect_k2 = (
-            int(k2_row["jumlah_test"])
-            - int(
-                round(
-                    k2_row["accuracy"]
-                    * k2_row["jumlah_test"]
-                )
+            float(
+                k3_row[
+                    "log_loss"
+                ]
+            )
+            - float(
+                k2_row[
+                    "log_loss"
+                ]
             )
         )
 
-        incorrect_k3 = (
-            int(k3_row["jumlah_test"])
-            - int(
-                round(
-                    k3_row["accuracy"]
-                    * k3_row["jumlah_test"]
-                )
-            )
+        incorrect_k2 = int(
+            k2_row[
+                "incorrect_predictions"
+            ]
+        )
+
+        incorrect_k3 = int(
+            k3_row[
+                "incorrect_predictions"
+            ]
         )
 
         additional_errors = (
@@ -803,21 +1432,26 @@ def build_yake_analysis(
             - incorrect_k2
         )
 
-        if accuracy_change > 0:
+        if accuracy_change > 0.0:
             conclusion = (
-                "YAKE meningkatkan accuracy."
+                "Penambahan keyword YAKE meningkatkan accuracy."
             )
-        elif accuracy_change < 0:
+
+        elif accuracy_change < 0.0:
             conclusion = (
-                "YAKE belum meningkatkan accuracy."
+                "Penambahan keyword YAKE belum meningkatkan accuracy."
             )
+
         else:
             conclusion = (
-                "YAKE tidak mengubah accuracy."
+                "Penambahan keyword YAKE tidak mengubah accuracy."
             )
 
         rows.append(
             {
+                "dataset":
+                    "Kompas",
+
                 "model":
                     MODEL_DISPLAY_NAMES[
                         model_name
@@ -839,19 +1473,31 @@ def build_yake_analysis(
                     ),
 
                 "controlled_sequence_length":
+                    True,
+
+                "sequence_length":
                     60,
 
                 "k2_accuracy":
-                    float(k2_row["accuracy"]),
+                    float(
+                        k2_row[
+                            "accuracy"
+                        ]
+                    ),
 
                 "k3_accuracy":
-                    float(k3_row["accuracy"]),
+                    float(
+                        k3_row[
+                            "accuracy"
+                        ]
+                    ),
 
                 "accuracy_change":
                     accuracy_change,
 
                 "accuracy_change_percentage_point":
-                    accuracy_change * 100,
+                    accuracy_change
+                    * 100.0,
 
                 "precision_macro_change":
                     precision_change,
@@ -879,11 +1525,13 @@ def build_yake_analysis(
             }
         )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows
+    )
 
 
 # =============================================================================
-# MODEL TERBAIK
+# MODEL TERBAIK PER DATASET
 # =============================================================================
 
 def build_best_model_summary(
@@ -893,16 +1541,22 @@ def build_best_model_summary(
     Mencari model terbaik pada setiap dataset.
     """
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
-    for dataset_name in metrics[
-        "dataset"
-    ].unique():
-
+    for dataset_name in sorted(
+        metrics[
+            "dataset"
+        ].unique()
+    ):
         dataset_metrics = metrics[
             metrics["dataset"]
             == dataset_name
         ].copy()
+
+        if dataset_metrics.empty:
+            continue
 
         best_accuracy_row = (
             dataset_metrics
@@ -910,8 +1564,15 @@ def build_best_model_summary(
                 [
                     "accuracy",
                     "f1_macro",
+                    "log_loss",
+                    "average_inference_ms_per_sample",
                 ],
-                ascending=False,
+                ascending=[
+                    False,
+                    False,
+                    True,
+                    True,
+                ],
             )
             .iloc[0]
         )
@@ -922,8 +1583,30 @@ def build_best_model_summary(
                 [
                     "f1_macro",
                     "accuracy",
+                    "log_loss",
+                    "average_inference_ms_per_sample",
                 ],
-                ascending=False,
+                ascending=[
+                    False,
+                    False,
+                    True,
+                    True,
+                ],
+            )
+            .iloc[0]
+        )
+
+        lowest_log_loss_row = (
+            dataset_metrics
+            .sort_values(
+                [
+                    "log_loss",
+                    "accuracy",
+                ],
+                ascending=[
+                    True,
+                    False,
+                ],
             )
             .iloc[0]
         )
@@ -931,8 +1614,14 @@ def build_best_model_summary(
         fastest_row = (
             dataset_metrics
             .sort_values(
-                "average_inference_ms_per_sample",
-                ascending=True,
+                [
+                    "average_inference_ms_per_sample",
+                    "accuracy",
+                ],
+                ascending=[
+                    True,
+                    False,
+                ],
             )
             .iloc[0]
         )
@@ -957,10 +1646,22 @@ def build_best_model_summary(
                         "scenario_code"
                     ],
 
+                "best_accuracy_representation":
+                    best_accuracy_row[
+                        "scenario_display"
+                    ],
+
                 "best_accuracy":
                     float(
                         best_accuracy_row[
                             "accuracy"
+                        ]
+                    ),
+
+                "best_accuracy_f1_macro":
+                    float(
+                        best_accuracy_row[
+                            "f1_macro"
                         ]
                     ),
 
@@ -983,6 +1684,18 @@ def build_best_model_summary(
                     float(
                         best_f1_row[
                             "f1_macro"
+                        ]
+                    ),
+
+                "lowest_log_loss_experiment":
+                    lowest_log_loss_row[
+                        "experiment_name"
+                    ],
+
+                "lowest_log_loss":
+                    float(
+                        lowest_log_loss_row[
+                            "log_loss"
                         ]
                     ),
 
@@ -1010,7 +1723,9 @@ def build_best_model_summary(
             }
         )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows
+    )
 
 
 # =============================================================================
@@ -1021,7 +1736,7 @@ def build_efficiency_analysis(
     metrics: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Membandingkan kecepatan inferensi seluruh eksperimen.
+    Membandingkan efisiensi inferensi seluruh eksperimen.
     """
 
     result = metrics[
@@ -1031,6 +1746,7 @@ def build_efficiency_analysis(
             "dataset",
             "scenario_code",
             "scenario_display",
+            "sequence_length",
             "jumlah_test",
             "accuracy",
             "f1_macro",
@@ -1049,29 +1765,35 @@ def build_efficiency_analysis(
         }
     )
 
-    result["samples_per_second"] = np.divide(
-        result["jumlah_test"],
-        result["inference_time_seconds"],
-        out=np.zeros(
-            len(result),
-            dtype=float,
-        ),
-        where=(
-            result["inference_time_seconds"]
-            != 0
-        ),
+    result["samples_per_second"] = (
+        result[
+            "jumlah_test"
+        ]
+        / result[
+            "inference_time_seconds"
+        ]
     )
 
-    result = result.sort_values(
-        "average_inference_ms_per_sample",
-        ascending=True,
-    ).reset_index(drop=True)
-
-    result["efficiency_rank"] = (
-        np.arange(
-            1,
-            len(result) + 1,
+    result = (
+        result
+        .sort_values(
+            [
+                "average_inference_ms_per_sample",
+                "accuracy",
+            ],
+            ascending=[
+                True,
+                False,
+            ],
         )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    result["efficiency_rank"] = np.arange(
+        1,
+        len(result) + 1,
     )
 
     return result
@@ -1082,18 +1804,20 @@ def build_efficiency_analysis(
 # =============================================================================
 
 def build_final_findings(
-    metrics: pd.DataFrame,
     description_analysis: pd.DataFrame,
     yake_analysis: pd.DataFrame,
     best_model_summary: pd.DataFrame,
+    model_comparison: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Membentuk temuan utama penelitian secara otomatis.
+    Membentuk ringkasan temuan utama penelitian
+    secara otomatis.
     """
 
-    findings = []
+    findings: list[
+        dict[str, Any]
+    ] = []
 
-    # Temuan penambahan description.
     for row in description_analysis.itertuples(
         index=False
     ):
@@ -1110,22 +1834,24 @@ def build_final_findings(
 
                 "finding":
                     (
-                        f"Penambahan description "
-                        f"mengubah accuracy dari "
-                        f"{row.baseline_accuracy:.4f} "
-                        f"menjadi "
+                        "Perbandingan "
+                        f"{row.baseline_scenario} ke "
+                        f"{row.treatment_scenario} mengubah accuracy "
+                        f"dari {row.baseline_accuracy:.4f} menjadi "
                         f"{row.treatment_accuracy:.4f}."
                     ),
 
                 "change_percentage_point":
                     row.accuracy_change_percentage_point,
 
+                "controlled_comparison":
+                    row.controlled_sequence_length,
+
                 "interpretation":
                     row.interpretation,
             }
         )
 
-    # Temuan YAKE.
     for row in yake_analysis.itertuples(
         index=False
     ):
@@ -1142,22 +1868,22 @@ def build_final_findings(
 
                 "finding":
                     (
-                        f"Penambahan keyword YAKE "
-                        f"mengubah accuracy K2 "
-                        f"{row.k2_accuracy:.4f} "
-                        f"menjadi K3 "
-                        f"{row.k3_accuracy:.4f}."
+                        "Penambahan keyword YAKE mengubah accuracy "
+                        f"dari {row.k2_accuracy:.4f} pada K2 menjadi "
+                        f"{row.k3_accuracy:.4f} pada K3."
                     ),
 
                 "change_percentage_point":
                     row.accuracy_change_percentage_point,
+
+                "controlled_comparison":
+                    row.controlled_sequence_length,
 
                 "interpretation":
                     row.conclusion,
             }
         )
 
-    # Temuan model terbaik.
     for row in best_model_summary.itertuples(
         index=False
     ):
@@ -1174,34 +1900,30 @@ def build_final_findings(
 
                 "finding":
                     (
-                        f"Model terbaik berdasarkan "
-                        f"accuracy adalah "
-                        f"{row.best_accuracy_experiment} "
-                        f"dengan accuracy "
+                        "Model terbaik berdasarkan accuracy adalah "
+                        f"{row.best_accuracy_experiment} dengan accuracy "
                         f"{row.best_accuracy:.4f}."
                     ),
 
                 "change_percentage_point":
                     np.nan,
 
+                "controlled_comparison":
+                    np.nan,
+
                 "interpretation":
                     (
-                        "Model dipilih berdasarkan "
-                        "hasil test set."
+                        "Model terbaik ditentukan secara terpisah "
+                        "untuk setiap dataset berdasarkan test set."
                     ),
             }
         )
 
-    # Temuan model yang lebih sering unggul.
     winner_counts = {
         "CNN": 0,
         "Attention-BiLSTM": 0,
         "Sama": 0,
     }
-
-    model_comparison = build_model_comparison(
-        metrics
-    )
 
     for winner in model_comparison[
         "accuracy_winner"
@@ -1227,26 +1949,63 @@ def build_final_findings(
 
             "finding":
                 (
-                    f"CNN unggul pada "
-                    f"{winner_counts['CNN']} skenario, "
-                    f"Attention-BiLSTM unggul pada "
-                    f"{winner_counts['Attention-BiLSTM']} "
-                    f"skenario, dan seri pada "
-                    f"{winner_counts['Sama']} skenario."
+                    f"CNN unggul pada {winner_counts['CNN']} skenario, "
+                    "Attention-BiLSTM unggul pada "
+                    f"{winner_counts['Attention-BiLSTM']} skenario, "
+                    f"dan seri pada {winner_counts['Sama']} skenario."
                 ),
 
             "change_percentage_point":
                 np.nan,
 
+            "controlled_comparison":
+                True,
+
             "interpretation":
                 (
-                    "Tidak ada satu arsitektur yang "
-                    "mutlak unggul pada seluruh skenario."
+                    "Perbandingan arsitektur dilakukan pada skenario "
+                    "representasi dan test set yang sama."
                 ),
         }
     )
 
-    return pd.DataFrame(findings)
+    return pd.DataFrame(
+        findings
+    )
+
+
+# =============================================================================
+# UTILITAS GRAFIK
+# =============================================================================
+
+def add_bar_value_labels(
+    axis: plt.Axes,
+    decimals: int = 2,
+    suffix: str = "",
+) -> None:
+    """
+    Menambahkan label nilai pada setiap batang grafik.
+    """
+
+    for patch in axis.patches:
+        height = patch.get_height()
+
+        axis.annotate(
+            f"{height:.{decimals}f}{suffix}",
+            xy=(
+                patch.get_x()
+                + patch.get_width() / 2.0,
+                height,
+            ),
+            xytext=(
+                0,
+                4,
+            ),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
 
 
 # =============================================================================
@@ -1268,83 +2027,99 @@ def plot_accuracy_comparison(
     plot_data = metrics.copy()
 
     plot_data["label"] = (
-        plot_data["model_display"]
+        plot_data["dataset"]
+        + "\n"
+        + plot_data["model_display"]
         + " "
         + plot_data["scenario_code"]
     )
 
-    plot_data = plot_data.sort_values(
-        [
-            "dataset",
-            "scenario_order",
-            "model_display",
-        ]
-    )
-
-    plt.figure(
-        figsize=(12, 6)
+    plot_data = (
+        plot_data
+        .sort_values(
+            [
+                "dataset",
+                "scenario_order",
+                "model_display",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
     positions = np.arange(
         len(plot_data)
     )
 
-    plt.bar(
-        positions,
-        plot_data["accuracy"] * 100,
+    figure, axis = plt.subplots(
+        figsize=(13, 6)
     )
 
-    plt.xticks(
+    axis.bar(
         positions,
+        plot_data["accuracy"]
+        * 100.0,
+    )
+
+    axis.set_xticks(
+        positions
+    )
+
+    axis.set_xticklabels(
         plot_data["label"],
-        rotation=45,
+        rotation=40,
         ha="right",
     )
 
-    plt.ylabel(
+    axis.set_ylabel(
         "Accuracy (%)"
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Eksperimen"
     )
 
-    plt.title(
+    axis.set_title(
         "Perbandingan Accuracy pada Test Set"
     )
 
-    plt.ylim(
-        0,
-        100,
+    minimum_value = float(
+        (
+            plot_data["accuracy"]
+            * 100.0
+        ).min()
     )
 
-    plt.grid(
+    axis.set_ylim(
+        bottom=max(
+            0.0,
+            minimum_value - 5.0,
+        ),
+        top=100.5,
+    )
+
+    axis.grid(
         axis="y",
         alpha=0.3,
     )
 
-    for position, value in zip(
-        positions,
-        plot_data["accuracy"] * 100,
-    ):
-        plt.text(
-            position,
-            value + 0.5,
-            f"{value:.2f}",
-            ha="center",
-            va="bottom",
-            fontsize=8,
-        )
+    add_bar_value_labels(
+        axis,
+        decimals=2,
+    )
 
-    plt.tight_layout()
+    figure.tight_layout()
 
-    plt.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -1368,83 +2143,99 @@ def plot_f1_comparison(
     plot_data = metrics.copy()
 
     plot_data["label"] = (
-        plot_data["model_display"]
+        plot_data["dataset"]
+        + "\n"
+        + plot_data["model_display"]
         + " "
         + plot_data["scenario_code"]
     )
 
-    plot_data = plot_data.sort_values(
-        [
-            "dataset",
-            "scenario_order",
-            "model_display",
-        ]
-    )
-
-    plt.figure(
-        figsize=(12, 6)
+    plot_data = (
+        plot_data
+        .sort_values(
+            [
+                "dataset",
+                "scenario_order",
+                "model_display",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
     positions = np.arange(
         len(plot_data)
     )
 
-    plt.bar(
-        positions,
-        plot_data["f1_macro"] * 100,
+    figure, axis = plt.subplots(
+        figsize=(13, 6)
     )
 
-    plt.xticks(
+    axis.bar(
         positions,
+        plot_data["f1_macro"]
+        * 100.0,
+    )
+
+    axis.set_xticks(
+        positions
+    )
+
+    axis.set_xticklabels(
         plot_data["label"],
-        rotation=45,
+        rotation=40,
         ha="right",
     )
 
-    plt.ylabel(
+    axis.set_ylabel(
         "Macro F1-score (%)"
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Eksperimen"
     )
 
-    plt.title(
+    axis.set_title(
         "Perbandingan Macro F1-score pada Test Set"
     )
 
-    plt.ylim(
-        0,
-        100,
+    minimum_value = float(
+        (
+            plot_data["f1_macro"]
+            * 100.0
+        ).min()
     )
 
-    plt.grid(
+    axis.set_ylim(
+        bottom=max(
+            0.0,
+            minimum_value - 5.0,
+        ),
+        top=100.5,
+    )
+
+    axis.grid(
         axis="y",
         alpha=0.3,
     )
 
-    for position, value in zip(
-        positions,
-        plot_data["f1_macro"] * 100,
-    ):
-        plt.text(
-            position,
-            value + 0.5,
-            f"{value:.2f}",
-            ha="center",
-            va="bottom",
-            fontsize=8,
-        )
+    add_bar_value_labels(
+        axis,
+        decimals=2,
+    )
 
-    plt.tight_layout()
+    figure.tight_layout()
 
-    plt.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -1457,8 +2248,14 @@ def plot_description_contribution(
     description_analysis: pd.DataFrame,
 ) -> Path:
     """
-    Membuat grafik perubahan accuracy akibat description.
+    Membuat grafik perubahan accuracy dari
+    baseline ke treatment.
     """
+
+    if description_analysis.empty:
+        raise ValueError(
+            "Data analisis description kosong."
+        )
 
     output_path = (
         FIGURES_DIR
@@ -1468,6 +2265,15 @@ def plot_description_contribution(
     plot_data = (
         description_analysis
         .copy()
+        .sort_values(
+            [
+                "dataset",
+                "model",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
     plot_data["label"] = (
@@ -1482,62 +2288,111 @@ def plot_description_contribution(
 
     bar_width = 0.35
 
-    plt.figure(
+    figure, axis = plt.subplots(
         figsize=(11, 6)
     )
 
-    plt.bar(
-        positions - bar_width / 2,
-        plot_data["baseline_accuracy"] * 100,
+    axis.bar(
+        positions
+        - bar_width / 2.0,
+        plot_data[
+            "baseline_accuracy"
+        ]
+        * 100.0,
         width=bar_width,
         label="Title",
     )
 
-    plt.bar(
-        positions + bar_width / 2,
-        plot_data["treatment_accuracy"] * 100,
+    axis.bar(
+        positions
+        + bar_width / 2.0,
+        plot_data[
+            "treatment_accuracy"
+        ]
+        * 100.0,
         width=bar_width,
         label="Title + Description",
     )
 
-    plt.xticks(
-        positions,
-        plot_data["label"],
+    axis.set_xticks(
+        positions
     )
 
-    plt.ylabel(
+    axis.set_xticklabels(
+        plot_data["label"]
+    )
+
+    axis.set_ylabel(
         "Accuracy (%)"
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Dataset dan Model"
     )
 
-    plt.title(
-        "Pengaruh Penambahan Description"
+    axis.set_title(
+        "Perbandingan Title dan Title + Description"
     )
 
-    plt.ylim(
-        0,
-        100,
+    minimum_value = float(
+        min(
+            (
+                plot_data[
+                    "baseline_accuracy"
+                ]
+                * 100.0
+            ).min(),
+            (
+                plot_data[
+                    "treatment_accuracy"
+                ]
+                * 100.0
+            ).min(),
+        )
     )
 
-    plt.grid(
+    axis.set_ylim(
+        bottom=max(
+            0.0,
+            minimum_value - 5.0,
+        ),
+        top=100.5,
+    )
+
+    axis.grid(
         axis="y",
         alpha=0.3,
     )
 
-    plt.legend()
+    axis.legend()
 
-    plt.tight_layout()
+    add_bar_value_labels(
+        axis,
+        decimals=2,
+    )
 
-    plt.savefig(
+    figure.text(
+        0.5,
+        -0.02,
+        (
+            "Catatan: Kompas K1 dan K2 memiliki sequence length berbeda; "
+            "AG News A1 dan A2 memiliki sequence length sama."
+        ),
+        ha="center",
+        fontsize=9,
+    )
+
+    figure.tight_layout()
+
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -1550,15 +2405,23 @@ def plot_yake_contribution(
     yake_analysis: pd.DataFrame,
 ) -> Path:
     """
-    Membuat grafik K2 vs K3.
+    Membuat grafik K2 dibandingkan dengan K3.
     """
+
+    if yake_analysis.empty:
+        raise ValueError(
+            "Data analisis YAKE kosong."
+        )
 
     output_path = (
         FIGURES_DIR
         / "yake_contribution.png"
     )
 
-    plot_data = yake_analysis.copy()
+    plot_data = (
+        yake_analysis
+        .copy()
+    )
 
     positions = np.arange(
         len(plot_data)
@@ -1566,63 +2429,105 @@ def plot_yake_contribution(
 
     bar_width = 0.35
 
-    plt.figure(
+    figure, axis = plt.subplots(
         figsize=(9, 6)
     )
 
-    plt.bar(
-        positions - bar_width / 2,
-        plot_data["k2_accuracy"] * 100,
+    axis.bar(
+        positions
+        - bar_width / 2.0,
+        plot_data[
+            "k2_accuracy"
+        ]
+        * 100.0,
         width=bar_width,
-        label="K2: Title + Description",
+        label=(
+            "K2: Title + Description"
+        ),
     )
 
-    plt.bar(
-        positions + bar_width / 2,
-        plot_data["k3_accuracy"] * 100,
+    axis.bar(
+        positions
+        + bar_width / 2.0,
+        plot_data[
+            "k3_accuracy"
+        ]
+        * 100.0,
         width=bar_width,
-        label="K3: + Keyword YAKE",
+        label=(
+            "K3: + Keyword YAKE"
+        ),
     )
 
-    plt.xticks(
-        positions,
-        plot_data["model"],
+    axis.set_xticks(
+        positions
     )
 
-    plt.ylabel(
+    axis.set_xticklabels(
+        plot_data["model"]
+    )
+
+    axis.set_ylabel(
         "Accuracy (%)"
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Model"
     )
 
-    plt.title(
+    axis.set_title(
         "Analisis Pengaruh Keyword YAKE\n"
-        "Sequence Length K2 dan K3 = 60"
+        "K2 dan K3 Menggunakan Sequence Length 60"
     )
 
-    plt.ylim(
-        0,
-        100,
+    minimum_value = float(
+        min(
+            (
+                plot_data[
+                    "k2_accuracy"
+                ]
+                * 100.0
+            ).min(),
+            (
+                plot_data[
+                    "k3_accuracy"
+                ]
+                * 100.0
+            ).min(),
+        )
     )
 
-    plt.grid(
+    axis.set_ylim(
+        bottom=max(
+            0.0,
+            minimum_value - 3.0,
+        ),
+        top=100.5,
+    )
+
+    axis.grid(
         axis="y",
         alpha=0.3,
     )
 
-    plt.legend()
+    axis.legend()
 
-    plt.tight_layout()
+    add_bar_value_labels(
+        axis,
+        decimals=2,
+    )
 
-    plt.savefig(
+    figure.tight_layout()
+
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -1635,7 +2540,8 @@ def plot_inference_comparison(
     metrics: pd.DataFrame,
 ) -> Path:
     """
-    Membuat grafik waktu inferensi rata-rata per sampel.
+    Membuat grafik rata-rata waktu inferensi
+    per artikel.
     """
 
     output_path = (
@@ -1646,64 +2552,86 @@ def plot_inference_comparison(
     plot_data = metrics.copy()
 
     plot_data["label"] = (
-        plot_data["model_display"]
+        plot_data["dataset"]
+        + "\n"
+        + plot_data["model_display"]
         + " "
         + plot_data["scenario_code"]
     )
 
-    plot_data = plot_data.sort_values(
-        "average_inference_ms_per_sample",
-        ascending=True,
+    plot_data = (
+        plot_data
+        .sort_values(
+            "average_inference_ms_per_sample",
+            ascending=True,
+        )
+        .reset_index(
+            drop=True
+        )
     )
 
     positions = np.arange(
         len(plot_data)
     )
 
-    plt.figure(
-        figsize=(12, 6)
+    figure, axis = plt.subplots(
+        figsize=(13, 6)
     )
 
-    plt.bar(
+    axis.bar(
         positions,
         plot_data[
             "average_inference_ms_per_sample"
         ],
     )
 
-    plt.xticks(
-        positions,
+    axis.set_xticks(
+        positions
+    )
+
+    axis.set_xticklabels(
         plot_data["label"],
-        rotation=45,
+        rotation=40,
         ha="right",
     )
 
-    plt.ylabel(
+    axis.set_ylabel(
         "Rata-rata Waktu Inferensi (ms/artikel)"
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Eksperimen"
     )
 
-    plt.title(
+    axis.set_title(
         "Perbandingan Efisiensi Inferensi"
     )
 
-    plt.grid(
+    axis.set_ylim(
+        bottom=0.0
+    )
+
+    axis.grid(
         axis="y",
         alpha=0.3,
     )
 
-    plt.tight_layout()
+    add_bar_value_labels(
+        axis,
+        decimals=3,
+    )
 
-    plt.savefig(
+    figure.tight_layout()
+
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -1722,11 +2650,19 @@ def print_summary(
     Menampilkan ringkasan hasil pada terminal.
     """
 
-    print("\n" + "=" * 80)
-    print("RINGKASAN COMPARATIVE AND ABLATION ANALYSIS")
+    print(
+        "\n" + "=" * 80
+    )
+
+    print(
+        "RINGKASAN COMPARATIVE AND ABLATION ANALYSIS"
+    )
+
     print("=" * 80)
 
-    print("\nPERBANDINGAN CNN VS ATTENTION-BILSTM")
+    print(
+        "\nPERBANDINGAN CNN VS ATTENTION-BILSTM"
+    )
 
     if not model_comparison.empty:
         display_columns = [
@@ -1747,12 +2683,15 @@ def print_summary(
             )
         )
 
-    print("\nPENGARUH DESCRIPTION")
+    print(
+        "\nPENGARUH TITLE + DESCRIPTION"
+    )
 
     if not description_analysis.empty:
         display_columns = [
             "dataset",
             "model",
+            "controlled_sequence_length",
             "baseline_accuracy",
             "treatment_accuracy",
             "accuracy_change_percentage_point",
@@ -1768,7 +2707,9 @@ def print_summary(
             )
         )
 
-    print("\nPENGARUH KEYWORD YAKE")
+    print(
+        "\nPENGARUH KEYWORD YAKE"
+    )
 
     if not yake_analysis.empty:
         display_columns = [
@@ -1789,7 +2730,9 @@ def print_summary(
             )
         )
 
-    print("\nMODEL TERBAIK")
+    print(
+        "\nMODEL TERBAIK PER DATASET"
+    )
 
     if not best_model_summary.empty:
         display_columns = [
@@ -1798,7 +2741,7 @@ def print_summary(
             "best_accuracy_model",
             "best_accuracy_scenario",
             "best_accuracy",
-            "best_f1_macro",
+            "best_accuracy_f1_macro",
         ]
 
         print(
@@ -1817,27 +2760,33 @@ def print_summary(
 
 def main() -> None:
     """
-    Menjalankan comparative dan ablation analysis.
+    Menjalankan comparative dan ablation analysis final.
     """
 
     print("=" * 80)
+
     print(
         "STEP 6.4 - COMPARATIVE AND ABLATION ANALYSIS"
     )
+
     print("=" * 80)
 
     create_output_directories()
 
-    print("\nMemuat hasil evaluasi test set...")
+    print(
+        "\nMemuat hasil evaluasi test set..."
+    )
 
     metrics = load_metrics()
 
     print(
-        f"Jumlah eksperimen utama: "
+        f"Jumlah eksperimen final: "
         f"{len(metrics)}"
     )
 
-    print("\nMembentuk perbandingan model...")
+    print(
+        "\nMembentuk perbandingan model..."
+    )
 
     model_comparison = (
         build_model_comparison(
@@ -1856,7 +2805,8 @@ def main() -> None:
     )
 
     print(
-        "Menganalisis kontribusi description..."
+        "Menganalisis perubahan Title ke "
+        "Title + Description..."
     )
 
     description_analysis = (
@@ -1876,7 +2826,7 @@ def main() -> None:
     )
 
     print(
-        "Menentukan model terbaik..."
+        "Menentukan model terbaik per dataset..."
     )
 
     best_model_summary = (
@@ -1901,7 +2851,6 @@ def main() -> None:
 
     final_findings = (
         build_final_findings(
-            metrics=metrics,
             description_analysis=(
                 description_analysis
             ),
@@ -1911,10 +2860,16 @@ def main() -> None:
             best_model_summary=(
                 best_model_summary
             ),
+            model_comparison=(
+                model_comparison
+            ),
         )
     )
 
-    # Simpan tabel.
+    # =========================================================================
+    # MENYIMPAN TABEL
+    # =========================================================================
+
     model_comparison.to_csv(
         MODEL_COMPARISON_PATH,
         index=False,
@@ -1957,8 +2912,13 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    # Buat grafik.
-    print("\nMembuat grafik perbandingan...")
+    # =========================================================================
+    # MEMBUAT GRAFIK
+    # =========================================================================
+
+    print(
+        "\nMembuat grafik perbandingan..."
+    )
 
     accuracy_plot = (
         plot_accuracy_comparison(
@@ -2005,50 +2965,120 @@ def main() -> None:
         ),
     )
 
-    print("\n" + "=" * 80)
-    print("OUTPUT COMPARATIVE ANALYSIS")
+    print(
+        "\n" + "=" * 80
+    )
+
+    print(
+        "OUTPUT COMPARATIVE ANALYSIS"
+    )
+
     print("=" * 80)
 
-    print("\nTabel perbandingan model:")
-    print(MODEL_COMPARISON_PATH)
+    print(
+        "\nTabel perbandingan model:"
+    )
 
-    print("\nTabel perbandingan skenario:")
-    print(SCENARIO_COMPARISON_PATH)
+    print(
+        MODEL_COMPARISON_PATH
+    )
 
-    print("\nAnalisis description:")
-    print(DESCRIPTION_ANALYSIS_PATH)
+    print(
+        "\nTabel perbandingan skenario:"
+    )
 
-    print("\nAnalisis YAKE:")
-    print(YAKE_ANALYSIS_PATH)
+    print(
+        SCENARIO_COMPARISON_PATH
+    )
 
-    print("\nRingkasan model terbaik:")
-    print(BEST_MODEL_PATH)
+    print(
+        "\nAnalisis Title + Description:"
+    )
 
-    print("\nAnalisis efisiensi:")
-    print(EFFICIENCY_ANALYSIS_PATH)
+    print(
+        DESCRIPTION_ANALYSIS_PATH
+    )
 
-    print("\nTemuan akhir penelitian:")
-    print(FINAL_RESEARCH_SUMMARY_PATH)
+    print(
+        "\nAnalisis YAKE:"
+    )
 
-    print("\nGrafik accuracy:")
-    print(accuracy_plot)
+    print(
+        YAKE_ANALYSIS_PATH
+    )
 
-    print("\nGrafik macro F1:")
-    print(f1_plot)
+    print(
+        "\nRingkasan model terbaik:"
+    )
 
-    print("\nGrafik kontribusi description:")
-    print(description_plot)
+    print(
+        BEST_MODEL_PATH
+    )
 
-    print("\nGrafik kontribusi YAKE:")
-    print(yake_plot)
+    print(
+        "\nAnalisis efisiensi:"
+    )
 
-    print("\nGrafik waktu inferensi:")
-    print(inference_plot)
+    print(
+        EFFICIENCY_ANALYSIS_PATH
+    )
 
-    print("\n" + "=" * 80)
+    print(
+        "\nTemuan akhir penelitian:"
+    )
+
+    print(
+        FINAL_RESEARCH_SUMMARY_PATH
+    )
+
+    print(
+        "\nGrafik accuracy:"
+    )
+
+    print(
+        accuracy_plot
+    )
+
+    print(
+        "\nGrafik macro F1:"
+    )
+
+    print(
+        f1_plot
+    )
+
+    print(
+        "\nGrafik Title + Description:"
+    )
+
+    print(
+        description_plot
+    )
+
+    print(
+        "\nGrafik kontribusi YAKE:"
+    )
+
+    print(
+        yake_plot
+    )
+
+    print(
+        "\nGrafik waktu inferensi:"
+    )
+
+    print(
+        inference_plot
+    )
+
+    print(
+        "\n" + "=" * 80
+    )
+
     print(
         "Tahap comparative dan ablation analysis selesai."
     )
+
     print("=" * 80)
 
 

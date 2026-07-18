@@ -1,0 +1,7 @@
+﻿dataset,stage,jumlah_baris,jumlah_kolom,jumlah_kategori,total_missing_value,total_duplikat_baris,duplikat_artikel_normalized,duplikat_content_normalized,kelompok_konflik_label,description_kosong,tanggal_awal,tanggal_akhir,nama_kolom
+kompas,sebelum_cleaning,10000,7,4,0,0,0,3,0,0,2026-01-26T09:01:00,2026-05-25T19:24:00,"document_id, title, description, content, date, category, link"
+kompas,setelah_cleaning,9997,7,4,0,0,0,0,0,0,2026-01-26T09:01:00,2026-05-25T19:24:00,"document_id, title, description, content, date, category, link"
+ag_news_train,sebelum_cleaning,120000,7,4,0,0,151,0,22,0,,,"document_id, source_row, class_index, category, title, description, split"
+ag_news_train,setelah_cleaning,119817,7,4,0,0,0,0,0,0,,,"document_id, source_row, class_index, category, title, description, split"
+ag_news_test,sebelum_cleaning,7600,7,4,0,0,0,0,0,0,,,"document_id, source_row, class_index, category, title, description, split"
+ag_news_test,setelah_cleaning,7600,7,4,0,0,0,0,0,0,,,"document_id, source_row, class_index, category, title, description, split"

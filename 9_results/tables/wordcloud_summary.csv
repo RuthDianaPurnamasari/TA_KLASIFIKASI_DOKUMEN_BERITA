@@ -1,0 +1,11 @@
+﻿dataset,category,text_source,jumlah_dokumen,total_token_setelah_filter,jumlah_token_unik,rata_rata_token_per_dokumen,dokumen_tanpa_token,token_teratas,frekuensi_token_teratas,max_words_wordcloud,output_path
+ag_news_train,all,title + description,119817,2805784,61160,23.4172,0,world,8620,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\agnews_train_overall_wordcloud.png
+ag_news_train,business,title + description,29947,709546,26238,23.6934,0,oil,6371,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\agnews_train_business_wordcloud.png
+ag_news_train,sci_tech,title + description,29917,701940,31472,23.4629,0,microsoft,5135,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\agnews_train_sci_tech_wordcloud.png
+ag_news_train,sports,title + description,29974,678167,29704,22.6252,0,game,4281,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\agnews_train_sports_wordcloud.png
+ag_news_train,world,title + description,29979,716131,28746,23.8878,0,iraq,5834,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\agnews_train_world_wordcloud.png
+kompas,all,title + description,9997,215631,15773,21.5696,0,iran,2559,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\kompas_overall_wordcloud.png
+kompas,bola,title + description,2500,53823,5916,21.5292,0,liga,760,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\kompas_bola_wordcloud.png
+kompas,global,title + description,2500,54938,6696,21.9752,0,iran,2312,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\kompas_global_wordcloud.png
+kompas,money,title + description,2500,54886,6510,21.9544,0,harga,786,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\kompas_money_wordcloud.png
+kompas,tekno,title + description,2497,51984,6597,20.8186,0,harga,629,150,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\figures\wordclouds\kompas_tekno_wordcloud.png

@@ -1,6 +1,6 @@
-﻿month_period,jumlah_berita,persentase
-2026-01,119,1.19
-2026-02,558,5.58
-2026-03,975,9.75
-2026-04,2957,29.57
-2026-05,5391,53.91
+﻿month_period,year,month,month_name,jumlah_berita,persentase_dataset,tanggal_observasi_awal,tanggal_observasi_akhir,jumlah_hari_dalam_bulan,jumlah_hari_dalam_rentang_observasi,jumlah_hari_aktif,cakupan_hari_aktif_persen,rata_rata_berita_per_hari_observasi,rata_rata_berita_per_hari_aktif,bulan_parsial
+2026-01,2026,1,Januari,119,1.1904,2026-01-26,2026-01-31,31,6,6,100.0,19.8333,19.8333,True
+2026-02,2026,2,Februari,558,5.5817,2026-02-01,2026-02-28,28,28,28,100.0,19.9286,19.9286,False
+2026-03,2026,3,Maret,975,9.7529,2026-03-01,2026-03-31,31,31,31,100.0,31.4516,31.4516,False
+2026-04,2026,4,April,2956,29.5689,2026-04-01,2026-04-30,30,30,30,100.0,98.5333,98.5333,False
+2026-05,2026,5,Mei,5389,53.9062,2026-05-01,2026-05-25,31,25,25,100.0,215.56,215.56,True

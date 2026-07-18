@@ -1,0 +1,43 @@
+﻿dataset,text_field,text_field_display,sequence_length,jumlah_data,jumlah_tertampung,persentase_tertampung,jumlah_berpotensi_truncated,persentase_berpotensi_truncated
+kompas,title,Title,20,9997,9997,100.0,0,0.0
+kompas,title,Title,40,9997,9997,100.0,0,0.0
+kompas,title,Title,60,9997,9997,100.0,0,0.0
+kompas,title,Title,80,9997,9997,100.0,0,0.0
+kompas,title,Title,100,9997,9997,100.0,0,0.0
+kompas,title,Title,128,9997,9997,100.0,0,0.0
+kompas,title,Title,256,9997,9997,100.0,0,0.0
+kompas,title_description,Title + Description,20,9997,200,2.0006,9797,97.9994
+kompas,title_description,Title + Description,40,9997,9964,99.6699,33,0.3301
+kompas,title_description,Title + Description,60,9997,9997,100.0,0,0.0
+kompas,title_description,Title + Description,80,9997,9997,100.0,0,0.0
+kompas,title_description,Title + Description,100,9997,9997,100.0,0,0.0
+kompas,title_description,Title + Description,128,9997,9997,100.0,0,0.0
+kompas,title_description,Title + Description,256,9997,9997,100.0,0,0.0
+ag_news_train,title,Title,20,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,40,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,60,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,80,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,100,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,128,119817,119817,100.0,0,0.0
+ag_news_train,title,Title,256,119817,119817,100.0,0,0.0
+ag_news_train,title_description,Title + Description,20,119817,2940,2.4537,116877,97.5463
+ag_news_train,title_description,Title + Description,40,119817,77654,64.8105,42163,35.1895
+ag_news_train,title_description,Title + Description,60,119817,116871,97.5413,2946,2.4587
+ag_news_train,title_description,Title + Description,80,119817,119224,99.5051,593,0.4949
+ag_news_train,title_description,Title + Description,100,119817,119626,99.8406,191,0.1594
+ag_news_train,title_description,Title + Description,128,119817,119779,99.9683,38,0.0317
+ag_news_train,title_description,Title + Description,256,119817,119817,100.0,0,0.0
+ag_news_test,title,Title,20,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,40,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,60,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,80,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,100,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,128,7600,7600,100.0,0,0.0
+ag_news_test,title,Title,256,7600,7600,100.0,0,0.0
+ag_news_test,title_description,Title + Description,20,7600,207,2.7237,7393,97.2763
+ag_news_test,title_description,Title + Description,40,7600,4979,65.5132,2621,34.4868
+ag_news_test,title_description,Title + Description,60,7600,7429,97.75,171,2.25
+ag_news_test,title_description,Title + Description,80,7600,7565,99.5395,35,0.4605
+ag_news_test,title_description,Title + Description,100,7600,7582,99.7632,18,0.2368
+ag_news_test,title_description,Title + Description,128,7600,7598,99.9737,2,0.0263
+ag_news_test,title_description,Title + Description,256,7600,7600,100.0,0,0.0

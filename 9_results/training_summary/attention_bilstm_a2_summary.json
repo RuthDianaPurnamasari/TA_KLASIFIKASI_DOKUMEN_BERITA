@@ -1,30 +1,94 @@
 {
+    "status": "success",
     "experiment_name": "attention_bilstm_a2",
     "model": "Attention-BiLSTM",
+    "model_code": "attention_bilstm",
     "dataset": "AG News",
     "scenario_code": "A2",
     "scenario_name": "Title + Description",
-    "jumlah_train": 107883,
-    "jumlah_validation": 11988,
-    "vocabulary_size": 64868,
+    "started_at": "2026-07-17T05:33:26",
+    "finished_at": "2026-07-17T06:00:52",
+    "jumlah_train": 107835,
+    "jumlah_validation": 11982,
+    "train_label_distribution": {
+        "0": {
+            "count": 26981,
+            "percentage": 25.0206
+        },
+        "1": {
+            "count": 26977,
+            "percentage": 25.0169
+        },
+        "2": {
+            "count": 26952,
+            "percentage": 24.9937
+        },
+        "3": {
+            "count": 26925,
+            "percentage": 24.9687
+        }
+    },
+    "validation_label_distribution": {
+        "0": {
+            "count": 2998,
+            "percentage": 25.0209
+        },
+        "1": {
+            "count": 2997,
+            "percentage": 25.0125
+        },
+        "2": {
+            "count": 2995,
+            "percentage": 24.9958
+        },
+        "3": {
+            "count": 2992,
+            "percentage": 24.9708
+        }
+    },
+    "train_validation_document_overlap": 0,
+    "vocabulary_size": 65049,
+    "max_token_id_train": 65048,
+    "max_token_id_validation": 65031,
     "max_sequence_length": 60,
     "num_classes": 4,
     "embedding_dim": 128,
     "lstm_units_per_direction": 64,
+    "bilstm_output_units": 128,
     "attention_units": 64,
+    "dense_units": 128,
+    "spatial_dropout_rate": 0.2,
+    "recurrent_dropout_rate": 0.0,
+    "dropout_rate": 0.5,
     "epochs_maximum": 20,
-    "epochs_completed": 4,
+    "epochs_completed": 6,
     "batch_size": 64,
     "learning_rate_initial": 0.001,
-    "training_time_seconds": 694.3221,
-    "training_time_minutes": 11.572,
+    "random_seed": 42,
+    "monitor": "val_loss",
+    "selection_mode": "min",
+    "training_time_seconds": 1633.4356,
+    "training_time_minutes": 27.2239,
     "best_epoch": 1,
-    "best_train_loss": 0.31888774037361145,
-    "best_validation_loss": 0.25774654746055603,
-    "best_train_accuracy": 0.8911598920822144,
-    "best_validation_accuracy": 0.9164164066314697,
+    "best_train_loss": 0.31700584292411804,
+    "best_validation_loss": 0.24999041855335236,
+    "best_train_accuracy": 0.8934483528137207,
+    "best_validation_accuracy": 0.916458010673523,
     "learning_rate_at_best_epoch": 0.0010000000474974513,
+    "best_checkpoint_validation_loss": 0.24999041855335236,
+    "best_checkpoint_validation_accuracy": 0.916458010673523,
+    "final_model_source": "best_validation_loss_checkpoint",
+    "tensorflow_environment": {
+        "tensorflow_version": "2.20.0",
+        "gpu_available": false,
+        "gpu_count": 0,
+        "gpu_devices": [],
+        "cpu_count_detected": 1
+    },
     "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_a2_best.keras",
     "final_model_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\final_models\\attention_bilstm_a2_final.keras",
-    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\attention_bilstm_a2_history.csv"
+    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\attention_bilstm_a2_history.csv",
+    "summary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_summary\\attention_bilstm_a2_summary.json",
+    "test_set_used_during_training": false,
+    "k4_used": false
 }

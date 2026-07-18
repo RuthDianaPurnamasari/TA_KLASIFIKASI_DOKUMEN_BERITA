@@ -1,19 +1,61 @@
 {
+    "generated_at": "2026-07-17T21:58:57",
     "experiment_name": "cnn_k2",
     "dataset": "Kompas",
     "scenario_code": "K2",
     "scenario_name": "Title + Description",
     "source_shap_values": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\shap_values\\cnn_k2_global_shap_values.npz",
+    "shap_method": "shap.KernelExplainer",
+    "explained_representation": "Binary token-presence masks applied to integer token sequences.",
+    "baseline": "All non-padding tokens are replaced with token ID 0.",
+    "source_shap_shape": "samples x sequence positions x output classes",
     "selection_strategy": "One highest-confidence correct prediction per class and one highest-confidence incorrect prediction per actual class when available.",
     "maximum_local_samples": 8,
-    "selected_sample_count": 8,
+    "selected_sample_count": 7,
+    "correct_sample_count": 4,
+    "incorrect_sample_count": 3,
     "top_n_tokens_per_plot": 15,
-    "aggregation_method": "Signed sum across embedding dimensions for direction, and sum of absolute SHAP values across embedding dimensions for importance.",
+    "token_contribution_method": "The signed SHAP value for the predicted output class is used directly as the token contribution.",
+    "repeated_token_aggregation": "Signed SHAP values and absolute SHAP values are summed for repeated occurrences of the same token.",
+    "importance_ranking": "Tokens are ranked by the sum of absolute SHAP values.",
     "special_tokens_excluded": [
-        "[OOV]",
-        "[PAD]",
-        "[SEP]",
-        "[UNK]"
+        "",
+        "OOV",
+        "PAD",
+        "SEP",
+        "UNK"
     ],
-    "interpretation_note": "Positive signed SHAP values support the predicted class. Negative values reduce the predicted class score. Because SHAP is calculated at the embedding level, token contributions are approximate aggregated attributions."
+    "additivity_tolerance": 0.02,
+    "maximum_local_additivity_error": 4.6100467443466187e-08,
+    "interpretation_note": "Positive SHAP values increase the probability of the predicted class. Negative SHAP values decrease the probability of the predicted class. Absolute SHAP shows contribution magnitude without direction.",
+    "selected_samples": [
+        {
+            "shap_sample_position": 25,
+            "selection_type": "correct_high_confidence"
+        },
+        {
+            "shap_sample_position": 14,
+            "selection_type": "correct_high_confidence"
+        },
+        {
+            "shap_sample_position": 12,
+            "selection_type": "correct_high_confidence"
+        },
+        {
+            "shap_sample_position": 57,
+            "selection_type": "correct_high_confidence"
+        },
+        {
+            "shap_sample_position": 29,
+            "selection_type": "incorrect_high_confidence"
+        },
+        {
+            "shap_sample_position": 0,
+            "selection_type": "incorrect_high_confidence"
+        },
+        {
+            "shap_sample_position": 94,
+            "selection_type": "incorrect_high_confidence"
+        }
+    ]
 }

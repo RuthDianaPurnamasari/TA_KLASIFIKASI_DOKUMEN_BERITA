@@ -1,2 +1,2 @@
-﻿jumlah_data,tanggal_awal,tanggal_akhir,jumlah_hari_unik,bulan_teraktif,jumlah_berita_bulan_teraktif,tanggal_teraktif,jumlah_berita_tanggal_teraktif,jam_teraktif,jumlah_berita_jam_teraktif
-10000,2026-01-26 09:01:00,2026-05-25 19:24:00,120,2026-05,5391,2026-05-20,289,15,688
+﻿dataset,jumlah_data,tanggal_awal,tanggal_akhir,jumlah_hari_dalam_rentang,jumlah_hari_aktif,jumlah_hari_tanpa_berita,cakupan_hari_aktif_persen,rata_rata_berita_per_hari,rata_rata_berita_per_hari_aktif,bulan_dengan_jumlah_terbanyak,jumlah_berita_bulan_terbanyak,bulan_dengan_rata_rata_harian_tertinggi,rata_rata_harian_bulan_tertinggi,tanggal_teraktif,jumlah_berita_tanggal_teraktif,jam_teraktif,rentang_jam_teraktif,jumlah_berita_jam_teraktif,hari_teraktif,jumlah_berita_hari_teraktif
+kompas,9997,2026-01-26 09:01:00,2026-05-25 19:24:00,120,120,0,100.0,83.3083,83.3083,2026-05,5389,2026-05,215.56,2026-05-20,289,15,15:00–15:59,688,Rabu,1655

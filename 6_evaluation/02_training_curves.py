@@ -6,23 +6,29 @@
 #
 # Tujuan:
 # Membuat grafik training accuracy, validation accuracy,
-# training loss, dan validation loss untuk 10 eksperimen utama.
+# training loss, dan validation loss untuk 10 eksperimen final.
 #
-# Eksperimen utama:
+# Eksperimen:
 # - Kompas: K1, K2, K3
 # - AG News: A1, A2
 # - Model: CNN dan Attention-BiLSTM
 #
 # Output:
-# - Grafik training curve setiap eksperimen
+# - Grafik accuracy setiap eksperimen
+# - Grafik loss setiap eksperimen
+# - Grafik gabungan accuracy dan loss
 # - Ringkasan epoch terbaik
 # - Ringkasan indikasi overfitting
+#
+# Catatan:
+# Epoch terbaik ditentukan berdasarkan validation loss terendah.
 # =============================================================================
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -81,7 +87,7 @@ OVERFITTING_REPORT_PATH = (
 
 
 # =============================================================================
-# KONFIGURASI EKSPERIMEN UTAMA
+# KONFIGURASI EKSPERIMEN
 # =============================================================================
 
 EXPERIMENTS = [
@@ -104,7 +110,9 @@ EXPERIMENTS = [
         "model": "CNN",
         "dataset": "Kompas",
         "scenario_code": "K3",
-        "scenario_name": "Title + Description + Keyword YAKE",
+        "scenario_name": (
+            "Title + Description + Keyword YAKE"
+        ),
     },
     {
         "experiment_name": "cnn_a1",
@@ -139,7 +147,9 @@ EXPERIMENTS = [
         "model": "Attention-BiLSTM",
         "dataset": "Kompas",
         "scenario_code": "K3",
-        "scenario_name": "Title + Description + Keyword YAKE",
+        "scenario_name": (
+            "Title + Description + Keyword YAKE"
+        ),
     },
     {
         "experiment_name": "attention_bilstm_a1",
@@ -164,18 +174,19 @@ EXPERIMENTS = [
 
 def create_output_directories() -> None:
     """
-    Membuat folder output jika belum tersedia.
+    Membuat seluruh folder output yang dibutuhkan.
     """
 
-    FIGURES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    directories = [
+        FIGURES_DIR,
+        TABLES_DIR,
+    ]
 
-    TABLES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    for directory in directories:
+        directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
 
 # =============================================================================
@@ -216,7 +227,14 @@ def load_training_history(
     experiment_name: str,
 ) -> pd.DataFrame:
     """
-    Membaca file history training.
+    Membaca dan memvalidasi file training history.
+
+    Kolom wajib:
+    - epoch
+    - loss
+    - accuracy
+    - val_loss
+    - val_accuracy
     """
 
     history_path = get_history_path(
@@ -226,6 +244,13 @@ def load_training_history(
     if not history_path.exists():
         raise FileNotFoundError(
             "File training history tidak ditemukan:\n"
+            f"{history_path}"
+        )
+
+    if history_path.stat().st_size == 0:
+        raise ValueError(
+            "File training history ditemukan, "
+            "tetapi file kosong:\n"
             f"{history_path}"
         )
 
@@ -249,53 +274,134 @@ def load_training_history(
 
     if missing_columns:
         raise KeyError(
-            f"{experiment_name}: kolom history tidak lengkap.\n"
-            f"Kolom hilang: {missing_columns}"
+            f"{experiment_name}: kolom history "
+            "tidak lengkap.\n"
+            f"Kolom hilang: "
+            f"{sorted(missing_columns)}"
         )
 
     history = history.copy()
 
-    history["epoch"] = pd.to_numeric(
-        history["epoch"],
-        errors="coerce",
-    )
-
-    for column in [
+    numeric_columns = [
+        "epoch",
         "loss",
         "accuracy",
         "val_loss",
         "val_accuracy",
-    ]:
+    ]
+
+    for column in numeric_columns:
         history[column] = pd.to_numeric(
             history[column],
             errors="coerce",
         )
 
     history = history.dropna(
-        subset=[
-            "epoch",
-            "loss",
-            "accuracy",
-            "val_loss",
-            "val_accuracy",
-        ]
+        subset=numeric_columns
     )
 
     if history.empty:
         raise ValueError(
-            f"{experiment_name}: training history kosong."
+            f"{experiment_name}: training history "
+            "kosong setelah validasi."
         )
 
-    # Beberapa CSVLogger menyimpan epoch mulai dari 0.
-    # Untuk grafik, epoch ditampilkan mulai dari 1.
-    if history["epoch"].min() == 0:
+    # Memastikan nilai epoch berupa bilangan bulat.
+    non_integer_epoch = (
+        history["epoch"]
+        % 1
+        != 0
+    )
+
+    if non_integer_epoch.any():
+        invalid_epochs = (
+            history.loc[
+                non_integer_epoch,
+                "epoch",
+            ]
+            .tolist()
+        )
+
+        raise ValueError(
+            f"{experiment_name}: ditemukan nilai "
+            "epoch bukan integer.\n"
+            f"Nilai: {invalid_epochs}"
+        )
+
+    # Mengurutkan epoch dan menghapus duplikasi.
+    history = (
+        history
+        .sort_values(
+            "epoch"
+        )
+        .drop_duplicates(
+            subset=["epoch"],
+            keep="last",
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    # CSVLogger biasanya menyimpan epoch mulai dari 0.
+    # Untuk grafik dan laporan, epoch ditampilkan mulai dari 1.
+    if int(history["epoch"].min()) == 0:
         history["epoch_display"] = (
-            history["epoch"] + 1
+            history["epoch"]
+            + 1
         )
     else:
         history["epoch_display"] = (
             history["epoch"]
         )
+
+    history["epoch"] = (
+        history["epoch"]
+        .astype(int)
+    )
+
+    history["epoch_display"] = (
+        history["epoch_display"]
+        .astype(int)
+    )
+
+    # Validasi rentang metrik accuracy.
+    for accuracy_column in [
+        "accuracy",
+        "val_accuracy",
+    ]:
+        invalid_accuracy = (
+            (
+                history[accuracy_column]
+                < 0.0
+            )
+            |
+            (
+                history[accuracy_column]
+                > 1.0
+            )
+        )
+
+        if invalid_accuracy.any():
+            raise ValueError(
+                f"{experiment_name}: ditemukan nilai "
+                f"{accuracy_column} di luar rentang "
+                "0 sampai 1."
+            )
+
+    # Loss tidak boleh negatif.
+    for loss_column in [
+        "loss",
+        "val_loss",
+    ]:
+        if (
+            history[loss_column]
+            < 0.0
+        ).any():
+            raise ValueError(
+                f"{experiment_name}: ditemukan nilai "
+                f"{loss_column} negatif."
+            )
 
     return history
 
@@ -306,9 +412,12 @@ def load_training_history(
 
 def load_training_summary(
     experiment_name: str,
-) -> dict:
+) -> dict[str, Any]:
     """
     Membaca JSON ringkasan training.
+
+    Mengembalikan dictionary kosong apabila file summary
+    tidak ditemukan atau tidak dapat dibaca.
     """
 
     summary_path = get_summary_path(
@@ -318,19 +427,32 @@ def load_training_summary(
     if not summary_path.exists():
         return {}
 
+    if summary_path.stat().st_size == 0:
+        return {}
+
     try:
         with open(
             summary_path,
             "r",
             encoding="utf-8",
         ) as file:
-            return json.load(file)
+            summary = json.load(
+                file
+            )
 
     except (
         json.JSONDecodeError,
         OSError,
     ):
         return {}
+
+    if not isinstance(
+        summary,
+        dict,
+    ):
+        return {}
+
+    return summary
 
 
 # =============================================================================
@@ -339,7 +461,7 @@ def load_training_summary(
 
 def get_best_epoch_information(
     history: pd.DataFrame,
-) -> dict:
+) -> dict[str, float | int]:
     """
     Menentukan epoch terbaik berdasarkan validation loss minimum.
     """
@@ -358,21 +480,25 @@ def get_best_epoch_information(
                 "epoch_display"
             ]
         ),
+
         "best_train_accuracy": float(
             best_row[
                 "accuracy"
             ]
         ),
+
         "best_validation_accuracy": float(
             best_row[
                 "val_accuracy"
             ]
         ),
+
         "best_train_loss": float(
             best_row[
                 "loss"
             ]
         ),
+
         "best_validation_loss": float(
             best_row[
                 "val_loss"
@@ -382,46 +508,142 @@ def get_best_epoch_information(
 
 
 # =============================================================================
+# VALIDASI SUMMARY DAN HISTORY
+# =============================================================================
+
+def validate_summary_consistency(
+    experiment_name: str,
+    summary: dict[str, Any],
+    best_information: dict[str, float | int],
+) -> int | None:
+    """
+    Memastikan best epoch pada summary konsisten dengan history.
+
+    Apabila summary tidak memiliki best_epoch, fungsi
+    mengembalikan None.
+    """
+
+    summary_best_epoch = summary.get(
+        "best_epoch"
+    )
+
+    if summary_best_epoch is None:
+        return None
+
+    try:
+        summary_best_epoch = int(
+            summary_best_epoch
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ) as error:
+        raise ValueError(
+            f"{experiment_name}: best_epoch pada "
+            "summary tidak valid.\n"
+            f"Nilai: {summary_best_epoch}"
+        ) from error
+
+    history_best_epoch = int(
+        best_information[
+            "best_epoch"
+        ]
+    )
+
+    if (
+        summary_best_epoch
+        != history_best_epoch
+    ):
+        raise ValueError(
+            f"{experiment_name}: best epoch pada "
+            "history dan summary berbeda.\n"
+            f"History : {history_best_epoch}\n"
+            f"Summary : {summary_best_epoch}"
+        )
+
+    return summary_best_epoch
+
+
+# =============================================================================
 # ANALISIS OVERFITTING
 # =============================================================================
 
 def analyze_overfitting(
     history: pd.DataFrame,
     best_epoch: int,
-) -> dict:
+) -> dict[str, Any]:
     """
     Memberikan indikasi sederhana mengenai overfitting.
 
-    Overfitting ditandai ketika:
-    - train accuracy meningkat;
-    - validation loss memburuk setelah epoch terbaik;
-    - terdapat gap train-validation yang cukup besar.
+    Indikasi overfitting ditentukan ketika:
+    - gap final train-validation accuracy minimal 0,03;
+    - validation loss akhir lebih tinggi daripada
+      validation loss pada epoch terbaik.
+
+    Analisis ini merupakan indikator berbasis kurva training,
+    bukan pengujian statistik.
     """
 
     last_row = history.iloc[-1]
 
-    best_row = history[
+    best_rows = history[
         history["epoch_display"]
         == best_epoch
     ]
 
-    if best_row.empty:
+    if best_rows.empty:
+        best_index = history[
+            "val_loss"
+        ].idxmin()
+
         best_row = history.loc[
-            [
-                history[
-                    "val_loss"
-                ].idxmin()
-            ]
+            best_index
         ]
 
-    best_row = best_row.iloc[0]
+    else:
+        best_row = best_rows.iloc[0]
+
+    final_epoch = int(
+        last_row[
+            "epoch_display"
+        ]
+    )
 
     final_train_accuracy = float(
-        last_row["accuracy"]
+        last_row[
+            "accuracy"
+        ]
     )
 
     final_validation_accuracy = float(
-        last_row["val_accuracy"]
+        last_row[
+            "val_accuracy"
+        ]
+    )
+
+    final_train_loss = float(
+        last_row[
+            "loss"
+        ]
+    )
+
+    final_validation_loss = float(
+        last_row[
+            "val_loss"
+        ]
+    )
+
+    best_validation_accuracy = float(
+        best_row[
+            "val_accuracy"
+        ]
+    )
+
+    best_validation_loss = float(
+        best_row[
+            "val_loss"
+        ]
     )
 
     accuracy_gap = (
@@ -430,42 +652,67 @@ def analyze_overfitting(
     )
 
     validation_loss_change = (
-        float(last_row["val_loss"])
-        - float(best_row["val_loss"])
+        final_validation_loss
+        - best_validation_loss
     )
 
     validation_accuracy_change = (
-        float(last_row["val_accuracy"])
-        - float(best_row["val_accuracy"])
+        final_validation_accuracy
+        - best_validation_accuracy
     )
 
-    overfitting_detected = (
+    epochs_after_best = (
+        final_epoch
+        - best_epoch
+    )
+
+    overfitting_detected = bool(
         accuracy_gap >= 0.03
-        and validation_loss_change > 0
+        and validation_loss_change > 0.0
+        and epochs_after_best > 0
     )
 
     if overfitting_detected:
         interpretation = (
-            "Terdapat indikasi overfitting setelah epoch terbaik. "
-            "Train accuracy terus meningkat, tetapi validation loss memburuk."
+            "Terdapat indikasi overfitting setelah "
+            "epoch terbaik. Train accuracy meningkat "
+            "dan validation loss memburuk."
         )
-    elif validation_loss_change > 0:
+
+    elif (
+        validation_loss_change > 0.0
+        and epochs_after_best > 0
+    ):
         interpretation = (
-            "Validation loss meningkat setelah epoch terbaik, "
-            "tetapi gap accuracy belum terlalu besar."
+            "Validation loss meningkat setelah epoch "
+            "terbaik, tetapi gap accuracy belum mencapai "
+            "ambang indikasi overfitting."
         )
+
     else:
         interpretation = (
-            "Tidak ditemukan indikasi overfitting yang kuat "
-            "berdasarkan history yang tersedia."
+            "Tidak ditemukan indikasi overfitting "
+            "yang kuat berdasarkan training history."
         )
 
     return {
+        "final_epoch":
+            final_epoch,
+
+        "epochs_after_best":
+            epochs_after_best,
+
         "final_train_accuracy":
             final_train_accuracy,
 
         "final_validation_accuracy":
             final_validation_accuracy,
+
+        "final_train_loss":
+            final_train_loss,
+
+        "final_validation_loss":
+            final_validation_loss,
 
         "final_accuracy_gap":
             accuracy_gap,
@@ -490,7 +737,7 @@ def analyze_overfitting(
 
 def plot_accuracy_curve(
     history: pd.DataFrame,
-    experiment: dict,
+    experiment: dict[str, str],
     best_epoch: int,
 ) -> Path:
     """
@@ -506,20 +753,28 @@ def plot_accuracy_curve(
         / f"{experiment_name}_accuracy_curve.png"
     )
 
-    plt.figure(
+    figure = plt.figure(
         figsize=(9, 5)
     )
 
     plt.plot(
-        history["epoch_display"],
-        history["accuracy"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "accuracy"
+        ],
         marker="o",
         label="Train Accuracy",
     )
 
     plt.plot(
-        history["epoch_display"],
-        history["val_accuracy"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "val_accuracy"
+        ],
         marker="o",
         label="Validation Accuracy",
     )
@@ -527,29 +782,46 @@ def plot_accuracy_curve(
     plt.axvline(
         best_epoch,
         linestyle="--",
-        label=f"Best Epoch = {best_epoch}",
+        label=(
+            f"Best Epoch = "
+            f"{best_epoch}"
+        ),
     )
 
     plt.title(
-        f"Accuracy Curve - {experiment['model']} "
+        f"Accuracy Curve - "
+        f"{experiment['model']} "
         f"{experiment['scenario_code']}\n"
         f"{experiment['scenario_name']}"
     )
 
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
+    plt.xlabel(
+        "Epoch"
+    )
+
+    plt.ylabel(
+        "Accuracy"
+    )
 
     plt.xticks(
-        history["epoch_display"]
+        history[
+            "epoch_display"
+        ]
+    )
+
+    minimum_accuracy = min(
+        history[
+            "accuracy"
+        ].min(),
+        history[
+            "val_accuracy"
+        ].min(),
     )
 
     plt.ylim(
         bottom=max(
-            0,
-            min(
-                history["accuracy"].min(),
-                history["val_accuracy"].min(),
-            )
+            0.0,
+            minimum_accuracy
             - 0.05,
         ),
         top=1.02,
@@ -563,13 +835,15 @@ def plot_accuracy_curve(
 
     plt.tight_layout()
 
-    plt.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
@@ -580,7 +854,7 @@ def plot_accuracy_curve(
 
 def plot_loss_curve(
     history: pd.DataFrame,
-    experiment: dict,
+    experiment: dict[str, str],
     best_epoch: int,
 ) -> Path:
     """
@@ -596,20 +870,28 @@ def plot_loss_curve(
         / f"{experiment_name}_loss_curve.png"
     )
 
-    plt.figure(
+    figure = plt.figure(
         figsize=(9, 5)
     )
 
     plt.plot(
-        history["epoch_display"],
-        history["loss"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "loss"
+        ],
         marker="o",
         label="Train Loss",
     )
 
     plt.plot(
-        history["epoch_display"],
-        history["val_loss"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "val_loss"
+        ],
         marker="o",
         label="Validation Loss",
     )
@@ -617,20 +899,35 @@ def plot_loss_curve(
     plt.axvline(
         best_epoch,
         linestyle="--",
-        label=f"Best Epoch = {best_epoch}",
+        label=(
+            f"Best Epoch = "
+            f"{best_epoch}"
+        ),
     )
 
     plt.title(
-        f"Loss Curve - {experiment['model']} "
+        f"Loss Curve - "
+        f"{experiment['model']} "
         f"{experiment['scenario_code']}\n"
         f"{experiment['scenario_name']}"
     )
 
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
+    plt.xlabel(
+        "Epoch"
+    )
+
+    plt.ylabel(
+        "Loss"
+    )
 
     plt.xticks(
-        history["epoch_display"]
+        history[
+            "epoch_display"
+        ]
+    )
+
+    plt.ylim(
+        bottom=0.0
     )
 
     plt.grid(
@@ -641,32 +938,32 @@ def plot_loss_curve(
 
     plt.tight_layout()
 
-    plt.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
     return output_path
 
 
 # =============================================================================
-# MEMBUAT GRAFIK GABUNGAN ACCURACY DAN LOSS
+# MEMBUAT GRAFIK GABUNGAN
 # =============================================================================
 
 def plot_combined_curve(
     history: pd.DataFrame,
-    experiment: dict,
+    experiment: dict[str, str],
     best_epoch: int,
 ) -> Path:
     """
     Membuat satu gambar yang berisi dua panel:
-    accuracy dan loss.
-
-    Catatan:
-    Setiap eksperimen tetap memiliki satu file gambar sendiri.
+    - accuracy;
+    - loss.
     """
 
     experiment_name = experiment[
@@ -679,21 +976,33 @@ def plot_combined_curve(
     )
 
     figure, axes = plt.subplots(
-        1,
-        2,
+        nrows=1,
+        ncols=2,
         figsize=(14, 5),
     )
 
+    # -------------------------------------------------------------------------
+    # PANEL ACCURACY
+    # -------------------------------------------------------------------------
+
     axes[0].plot(
-        history["epoch_display"],
-        history["accuracy"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "accuracy"
+        ],
         marker="o",
         label="Train Accuracy",
     )
 
     axes[0].plot(
-        history["epoch_display"],
-        history["val_accuracy"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "val_accuracy"
+        ],
         marker="o",
         label="Validation Accuracy",
     )
@@ -701,7 +1010,10 @@ def plot_combined_curve(
     axes[0].axvline(
         best_epoch,
         linestyle="--",
-        label=f"Best Epoch = {best_epoch}",
+        label=(
+            f"Best Epoch = "
+            f"{best_epoch}"
+        ),
     )
 
     axes[0].set_title(
@@ -717,7 +1029,27 @@ def plot_combined_curve(
     )
 
     axes[0].set_xticks(
-        history["epoch_display"]
+        history[
+            "epoch_display"
+        ]
+    )
+
+    minimum_accuracy = min(
+        history[
+            "accuracy"
+        ].min(),
+        history[
+            "val_accuracy"
+        ].min(),
+    )
+
+    axes[0].set_ylim(
+        bottom=max(
+            0.0,
+            minimum_accuracy
+            - 0.05,
+        ),
+        top=1.02,
     )
 
     axes[0].grid(
@@ -726,16 +1058,28 @@ def plot_combined_curve(
 
     axes[0].legend()
 
+    # -------------------------------------------------------------------------
+    # PANEL LOSS
+    # -------------------------------------------------------------------------
+
     axes[1].plot(
-        history["epoch_display"],
-        history["loss"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "loss"
+        ],
         marker="o",
         label="Train Loss",
     )
 
     axes[1].plot(
-        history["epoch_display"],
-        history["val_loss"],
+        history[
+            "epoch_display"
+        ],
+        history[
+            "val_loss"
+        ],
         marker="o",
         label="Validation Loss",
     )
@@ -743,7 +1087,10 @@ def plot_combined_curve(
     axes[1].axvline(
         best_epoch,
         linestyle="--",
-        label=f"Best Epoch = {best_epoch}",
+        label=(
+            f"Best Epoch = "
+            f"{best_epoch}"
+        ),
     )
 
     axes[1].set_title(
@@ -759,7 +1106,13 @@ def plot_combined_curve(
     )
 
     axes[1].set_xticks(
-        history["epoch_display"]
+        history[
+            "epoch_display"
+        ]
+    )
+
+    axes[1].set_ylim(
+        bottom=0.0
     )
 
     axes[1].grid(
@@ -768,13 +1121,25 @@ def plot_combined_curve(
 
     axes[1].legend()
 
+    # -------------------------------------------------------------------------
+    # JUDUL UTAMA
+    # -------------------------------------------------------------------------
+
     figure.suptitle(
-        f"Training Curve - {experiment['model']} "
+        f"Training Curve - "
+        f"{experiment['model']} "
         f"{experiment['scenario_code']}\n"
         f"{experiment['scenario_name']}"
     )
 
-    figure.tight_layout()
+    figure.tight_layout(
+        rect=[
+            0.0,
+            0.0,
+            1.0,
+            0.90,
+        ]
+    )
 
     figure.savefig(
         output_path,
@@ -795,19 +1160,27 @@ def plot_combined_curve(
 
 def main() -> None:
     """
-    Membuat seluruh grafik training curve.
+    Membuat seluruh grafik training curve untuk
+    10 eksperimen final.
     """
 
     print("=" * 80)
+
     print(
         "STEP 6.2 - TRAINING CURVES"
     )
+
     print("=" * 80)
 
     create_output_directories()
 
-    training_report_rows = []
-    overfitting_report_rows = []
+    training_report_rows: list[
+        dict[str, Any]
+    ] = []
+
+    overfitting_report_rows: list[
+        dict[str, Any]
+    ] = []
 
     success_count = 0
     failed_count = 0
@@ -830,6 +1203,10 @@ def main() -> None:
         )
 
         try:
+            # -----------------------------------------------------------------
+            # MEMUAT HISTORY DAN SUMMARY
+            # -----------------------------------------------------------------
+
             history = load_training_history(
                 experiment_name
             )
@@ -838,17 +1215,37 @@ def main() -> None:
                 experiment_name
             )
 
+            # -----------------------------------------------------------------
+            # MENENTUKAN EPOCH TERBAIK
+            # -----------------------------------------------------------------
+
             best_information = (
                 get_best_epoch_information(
                     history
                 )
             )
 
-            best_epoch = (
+            best_epoch = int(
                 best_information[
                     "best_epoch"
                 ]
             )
+
+            summary_best_epoch = (
+                validate_summary_consistency(
+                    experiment_name=(
+                        experiment_name
+                    ),
+                    summary=summary,
+                    best_information=(
+                        best_information
+                    ),
+                )
+            )
+
+            # -----------------------------------------------------------------
+            # ANALISIS OVERFITTING
+            # -----------------------------------------------------------------
 
             overfitting_information = (
                 analyze_overfitting(
@@ -856,6 +1253,10 @@ def main() -> None:
                     best_epoch=best_epoch,
                 )
             )
+
+            # -----------------------------------------------------------------
+            # MEMBUAT GRAFIK
+            # -----------------------------------------------------------------
 
             accuracy_path = (
                 plot_accuracy_curve(
@@ -881,16 +1282,24 @@ def main() -> None:
                 )
             )
 
+            # -----------------------------------------------------------------
+            # MEMBENTUK LAPORAN TRAINING CURVE
+            # -----------------------------------------------------------------
+
             training_report_rows.append(
                 {
                     "experiment_name":
                         experiment_name,
 
                     "model":
-                        experiment["model"],
+                        experiment[
+                            "model"
+                        ],
 
                     "dataset":
-                        experiment["dataset"],
+                        experiment[
+                            "dataset"
+                        ],
 
                     "scenario_code":
                         experiment[
@@ -910,8 +1319,14 @@ def main() -> None:
                     **best_information,
 
                     "summary_best_epoch":
-                        summary.get(
-                            "best_epoch"
+                        summary_best_epoch,
+
+                    "history_summary_consistent":
+                        (
+                            summary_best_epoch
+                            is None
+                            or summary_best_epoch
+                            == best_epoch
                         ),
 
                     "accuracy_curve_path":
@@ -931,20 +1346,33 @@ def main() -> None:
                 }
             )
 
+            # -----------------------------------------------------------------
+            # MEMBENTUK LAPORAN OVERFITTING
+            # -----------------------------------------------------------------
+
             overfitting_report_rows.append(
                 {
                     "experiment_name":
                         experiment_name,
 
                     "model":
-                        experiment["model"],
+                        experiment[
+                            "model"
+                        ],
 
                     "dataset":
-                        experiment["dataset"],
+                        experiment[
+                            "dataset"
+                        ],
 
                     "scenario_code":
                         experiment[
                             "scenario_code"
+                        ],
+
+                    "scenario_name":
+                        experiment[
+                            "scenario_name"
                         ],
 
                     "best_epoch":
@@ -955,6 +1383,11 @@ def main() -> None:
             )
 
             success_count += 1
+
+            print(
+                f"Epoch dijalankan    : "
+                f"{len(history)}"
+            )
 
             print(
                 f"Best epoch         : "
@@ -991,6 +1424,10 @@ def main() -> None:
             print(
                 str(error)
             )
+
+    # =========================================================================
+    # MEMBENTUK DATAFRAME LAPORAN
+    # =========================================================================
 
     training_report = pd.DataFrame(
         training_report_rows
@@ -1030,6 +1467,10 @@ def main() -> None:
             )
         )
 
+    # =========================================================================
+    # MENYIMPAN LAPORAN
+    # =========================================================================
+
     training_report.to_csv(
         TRAINING_CURVE_REPORT_PATH,
         index=False,
@@ -1042,10 +1483,18 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    print("\n" + "=" * 80)
+    # =========================================================================
+    # MENAMPILKAN RINGKASAN
+    # =========================================================================
+
+    print(
+        "\n" + "=" * 80
+    )
+
     print(
         "RINGKASAN TRAINING CURVES"
     )
+
     print("=" * 80)
 
     if not training_report.empty:
@@ -1057,13 +1506,48 @@ def main() -> None:
             "best_validation_loss",
         ]
 
+        display_dataframe = (
+            training_report[
+                display_columns
+            ]
+            .copy()
+        )
+
+        display_dataframe[
+            "best_validation_accuracy"
+        ] = (
+            display_dataframe[
+                "best_validation_accuracy"
+            ]
+            .map(
+                lambda value:
+                f"{value:.6f}"
+            )
+        )
+
+        display_dataframe[
+            "best_validation_loss"
+        ] = (
+            display_dataframe[
+                "best_validation_loss"
+            ]
+            .map(
+                lambda value:
+                f"{value:.6f}"
+            )
+        )
+
         print(
             "\n"
-            + training_report[
-                display_columns
-            ].to_string(
+            + display_dataframe.to_string(
                 index=False
             )
+        )
+
+    else:
+        print(
+            "\nTidak ada eksperimen yang "
+            "berhasil diproses."
         )
 
     print(
@@ -1100,10 +1584,14 @@ def main() -> None:
         OVERFITTING_REPORT_PATH
     )
 
-    print("\n" + "=" * 80)
+    print(
+        "\n" + "=" * 80
+    )
+
     print(
         "Tahap training curves selesai."
     )
+
     print("=" * 80)
 
 

@@ -1,0 +1,4 @@
+﻿dataset,jumlah_sebelum_cleaning,jumlah_setelah_cleaning,jumlah_dihapus,masalah_utama,jumlah_masalah_sebelum,jumlah_masalah_setelah,kelompok_konflik_sebelum,kelompok_konflik_setelah,baris_konflik_sebelum,baris_konflik_setelah,overlap_train_test_sebelum,overlap_train_test_setelah
+kompas,10000,9997,3,duplikat_content_normalized,3,0,0,0,0,0,0,0
+ag_news_train,120000,119817,183,duplikat_artikel_normalized,129,0,22,0,44,0,10,0
+ag_news_test,7600,7600,0,duplikat_artikel_normalized,0,0,0,0,0,0,0,0

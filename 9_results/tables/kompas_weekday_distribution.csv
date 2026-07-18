@@ -1,0 +1,8 @@
+﻿weekday_number,day_name,jumlah_berita,persentase,jumlah_hari_dalam_rentang,jumlah_hari_aktif,rata_rata_berita_per_hari,rata_rata_berita_per_hari_aktif
+0,Senin,1543,15.4346,18,18,85.7222,85.7222
+1,Selasa,1465,14.6544,17,17,86.1765,86.1765
+2,Rabu,1655,16.555,17,17,97.3529,97.3529
+3,Kamis,1565,15.6547,17,17,92.0588,92.0588
+4,Jumat,1481,14.8144,17,17,87.1176,87.1176
+5,Sabtu,1123,11.2334,17,17,66.0588,66.0588
+6,Minggu,1165,11.6535,17,17,68.5294,68.5294

@@ -1,25 +1,451 @@
 {
-    "deployment_status": "prepared",
+    "generated_at": "2026-07-17T22:57:59",
+    "deployment_status": "success",
     "primary_model": "cnn_k2",
     "comparison_model": "attention_bilstm_k2",
+    "dataset": "Kompas",
     "scenario": "K2",
     "representation": "Title + Description",
+    "environment": {
+        "python_version": "3.13.2",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "tensorflow_version": "2.20.0",
+        "keras_version": "3.12.0",
+        "numpy_version": "2.2.4",
+        "pandas_version": "2.2.3"
+    },
     "models": [
         {
             "experiment_name": "cnn_k2",
+            "display_name": "CNN",
+            "model_family": "cnn",
             "status": "success",
-            "source": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k2_best.keras",
-            "deployment_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\cnn_k2.keras",
-            "input_shape": "(None, 60)",
-            "output_shape": "(None, 4)"
+            "source_model": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k2_best.keras",
+                "filename": "cnn_k2_best.keras",
+                "size_bytes": 25027165,
+                "sha256": "dc19eb2d838dfdd3d58edb91d99128d6d3645501f1de162b1cc0308105506446"
+            },
+            "deployment_model": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\cnn_k2.keras",
+                "filename": "cnn_k2.keras",
+                "size_bytes": 8362413,
+                "sha256": "07db4188fb34394c31478b2e56f20fff5bcfd1f39e6876c08543901e9ceceb4f"
+            },
+            "architecture": {
+                "input_shape": [
+                    null,
+                    60
+                ],
+                "output_shape": [
+                    null,
+                    4
+                ],
+                "embedding_layer_name": "embedding",
+                "embedding_input_dim": 15492,
+                "embedding_output_dim": 128,
+                "parameter_count": 2082052,
+                "layer_count": 9,
+                "layer_types": [
+                    "InputLayer",
+                    "Embedding",
+                    "ZeroPaddingEmbeddingOutput",
+                    "SpatialDropout1D",
+                    "Conv1D",
+                    "MaskedGlobalMaxPooling1D",
+                    "Dense",
+                    "Dropout",
+                    "Dense"
+                ],
+                "required_custom_layers": [
+                    "MaskedGlobalMaxPooling1D",
+                    "ZeroPaddingEmbeddingOutput"
+                ]
+            },
+            "metrics": {
+                "experiment_name": "cnn_k2",
+                "model": "cnn",
+                "dataset": "Kompas",
+                "scenario_code": "K2",
+                "scenario_name": "Title + Description",
+                "jumlah_test": 1000,
+                "correct_predictions": 969,
+                "incorrect_predictions": 31,
+                "accuracy": 0.969,
+                "precision_macro": 0.9691714932985146,
+                "recall_macro": 0.969,
+                "f1_macro": 0.9690358618620192,
+                "precision_weighted": 0.9691714932985146,
+                "recall_weighted": 0.969,
+                "f1_weighted": 0.9690358618620192,
+                "log_loss": 0.0911827109664612,
+                "inference_time_seconds": 0.537634,
+                "average_inference_ms_per_sample": 0.537634,
+                "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k2_best.keras",
+                "test_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\test.npz",
+                "prediction_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\predictions\\cnn_k2_predictions.csv"
+            },
+            "smoke_test": {
+                "status": "success",
+                "sample_count": 4,
+                "prediction_atol": 1e-06,
+                "maximum_source_deployment_difference": 0.0,
+                "samples": [
+                    {
+                        "original_test_index": 269,
+                        "document_id": "KMP-00189",
+                        "actual_index": 0,
+                        "actual_label": "bola",
+                        "predicted_index": 0,
+                        "predicted_label": "bola",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9986133575439453,
+                        "probabilities": [
+                            0.9986133575439453,
+                            0.0002668108500074595,
+                            0.0008723497157916427,
+                            0.0002474685898050666
+                        ]
+                    },
+                    {
+                        "original_test_index": 105,
+                        "document_id": "KMP-04496",
+                        "actual_index": 1,
+                        "actual_label": "global",
+                        "predicted_index": 1,
+                        "predicted_label": "global",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9947466254234314,
+                        "probabilities": [
+                            3.5082110116491094e-05,
+                            0.9947466254234314,
+                            0.0021304793190211058,
+                            0.0030877836979925632
+                        ]
+                    },
+                    {
+                        "original_test_index": 360,
+                        "document_id": "KMP-09448",
+                        "actual_index": 2,
+                        "actual_label": "money",
+                        "predicted_index": 2,
+                        "predicted_label": "money",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9926849603652954,
+                        "probabilities": [
+                            0.0032808873802423477,
+                            0.0020080639515072107,
+                            0.9926849603652954,
+                            0.0020261115860193968
+                        ]
+                    },
+                    {
+                        "original_test_index": 0,
+                        "document_id": "KMP-05499",
+                        "actual_index": 3,
+                        "actual_label": "tekno",
+                        "predicted_index": 3,
+                        "predicted_label": "tekno",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9597062468528748,
+                        "probabilities": [
+                            0.0020056727807968855,
+                            0.02157621830701828,
+                            0.01671178825199604,
+                            0.9597062468528748
+                        ]
+                    }
+                ]
+            }
         },
         {
             "experiment_name": "attention_bilstm_k2",
+            "display_name": "Attention-BiLSTM",
+            "model_family": "attention_bilstm",
             "status": "success",
-            "source": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k2_best.keras",
-            "deployment_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\attention_bilstm_k2.keras",
-            "input_shape": "(None, 60)",
-            "output_shape": "(None, 4)"
+            "source_model": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k2_best.keras",
+                "filename": "attention_bilstm_k2_best.keras",
+                "size_bytes": 25346849,
+                "sha256": "68aee59c0df15a1f0bf417e0c554139afafc6baf79368895c0298af1bd468555"
+            },
+            "deployment_model": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\attention_bilstm_k2.keras",
+                "filename": "attention_bilstm_k2.keras",
+                "size_bytes": 8476284,
+                "sha256": "5f3d015572f28374fa298a88e7947652ab8ff1c2ce746ab246d06d5367a6a192"
+            },
+            "architecture": {
+                "input_shape": [
+                    null,
+                    60
+                ],
+                "output_shape": [
+                    null,
+                    4
+                ],
+                "embedding_layer_name": "embedding",
+                "embedding_input_dim": 15492,
+                "embedding_output_dim": 128,
+                "parameter_count": 2107140,
+                "layer_count": 8,
+                "layer_types": [
+                    "InputLayer",
+                    "Embedding",
+                    "SpatialDropout1D",
+                    "Bidirectional",
+                    "AttentionPooling1D",
+                    "Dense",
+                    "Dropout",
+                    "Dense"
+                ],
+                "required_custom_layers": [
+                    "AttentionPooling1D"
+                ]
+            },
+            "metrics": {
+                "experiment_name": "attention_bilstm_k2",
+                "model": "attention_bilstm",
+                "dataset": "Kompas",
+                "scenario_code": "K2",
+                "scenario_name": "Title + Description",
+                "jumlah_test": 1000,
+                "correct_predictions": 968,
+                "incorrect_predictions": 32,
+                "accuracy": 0.968,
+                "precision_macro": 0.9683403314989336,
+                "recall_macro": 0.968,
+                "f1_macro": 0.9680427375865936,
+                "precision_weighted": 0.9683403314989336,
+                "recall_weighted": 0.968,
+                "f1_weighted": 0.9680427375865938,
+                "log_loss": 0.1115295842585004,
+                "inference_time_seconds": 1.066817,
+                "average_inference_ms_per_sample": 1.066817,
+                "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k2_best.keras",
+                "test_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\test.npz",
+                "prediction_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\predictions\\attention_bilstm_k2_predictions.csv"
+            },
+            "smoke_test": {
+                "status": "success",
+                "sample_count": 4,
+                "prediction_atol": 1e-06,
+                "maximum_source_deployment_difference": 0.0,
+                "samples": [
+                    {
+                        "original_test_index": 269,
+                        "document_id": "KMP-00189",
+                        "actual_index": 0,
+                        "actual_label": "bola",
+                        "predicted_index": 0,
+                        "predicted_label": "bola",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9964084029197693,
+                        "probabilities": [
+                            0.9964084029197693,
+                            0.0027572414837777615,
+                            0.0006516238208860159,
+                            0.0001827439700718969
+                        ]
+                    },
+                    {
+                        "original_test_index": 105,
+                        "document_id": "KMP-04496",
+                        "actual_index": 1,
+                        "actual_label": "global",
+                        "predicted_index": 1,
+                        "predicted_label": "global",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9960458874702454,
+                        "probabilities": [
+                            0.00032651302171871066,
+                            0.9960458874702454,
+                            0.0013092807494103909,
+                            0.002318223472684622
+                        ]
+                    },
+                    {
+                        "original_test_index": 360,
+                        "document_id": "KMP-09448",
+                        "actual_index": 2,
+                        "actual_label": "money",
+                        "predicted_index": 2,
+                        "predicted_label": "money",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9974297881126404,
+                        "probabilities": [
+                            0.0004102926468476653,
+                            0.0004655783122871071,
+                            0.9974297881126404,
+                            0.0016942991642281413
+                        ]
+                    },
+                    {
+                        "original_test_index": 0,
+                        "document_id": "KMP-05499",
+                        "actual_index": 3,
+                        "actual_label": "tekno",
+                        "predicted_index": 3,
+                        "predicted_label": "tekno",
+                        "is_correct": true,
+                        "prediction_confidence": 0.9594204425811768,
+                        "probabilities": [
+                            0.0018271018052473664,
+                            0.021971501410007477,
+                            0.016780944541096687,
+                            0.9594204425811768
+                        ]
+                    }
+                ]
+            }
         }
-    ]
+    ],
+    "supporting_artifacts": {
+        "test_data": {
+            "status": "success",
+            "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\test.npz",
+            "shape": [
+                1000,
+                60
+            ],
+            "maximum_token_id": 15488,
+            "smoke_test_indices": [
+                269,
+                105,
+                360,
+                0
+            ],
+            "smoke_test_document_ids": [
+                "KMP-00189",
+                "KMP-04496",
+                "KMP-09448",
+                "KMP-05499"
+            ]
+        },
+        "vocabulary": {
+            "status": "success",
+            "source": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\vocabulary.txt",
+                "filename": "vocabulary.txt",
+                "size_bytes": 137633,
+                "sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2"
+            },
+            "deployment": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\vocabulary.txt",
+                "filename": "vocabulary.txt",
+                "size_bytes": 137633,
+                "sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2"
+            },
+            "vocabulary_size": 15492
+        },
+        "vectorizer_config": {
+            "status": "success",
+            "source": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\vectorizer_config.json",
+                "filename": "vectorizer_config.json",
+                "size_bytes": 1051,
+                "sha256": "4892b428400c0e9a45c524240138c1b7a830d85218fac1e980c7ec82e1635383"
+            },
+            "deployment": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\vectorizer_config.json",
+                "filename": "vectorizer_config.json",
+                "size_bytes": 1051,
+                "sha256": "4892b428400c0e9a45c524240138c1b7a830d85218fac1e980c7ec82e1635383"
+            },
+            "validated_sequence_length": 60
+        },
+        "label_mapping": {
+            "status": "success",
+            "source_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\tables\\label_mapping.json",
+            "deployment": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\label_mapping.json",
+                "filename": "label_mapping.json",
+                "size_bytes": 292,
+                "sha256": "e7081814452d7aa62de73a6dcae1e861d21c78d4ec499f773f3fc6cc9543bfae"
+            },
+            "mapping": {
+                "dataset": "Kompas",
+                "num_classes": 4,
+                "index_to_label": {
+                    "0": "bola",
+                    "1": "global",
+                    "2": "money",
+                    "3": "tekno"
+                },
+                "label_to_index": {
+                    "bola": 0,
+                    "global": 1,
+                    "money": 2,
+                    "tekno": 3
+                }
+            }
+        },
+        "model_metrics": {
+            "status": "success",
+            "source": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\metrics\\model_test_metrics.csv",
+                "filename": "model_test_metrics.csv",
+                "size_bytes": 4782,
+                "sha256": "fe9d4ed42b9e0ad3bdff41077306817c79e4bb00026102c73ea45cf3eab612bd"
+            },
+            "metrics": {
+                "cnn_k2": {
+                    "experiment_name": "cnn_k2",
+                    "model": "cnn",
+                    "dataset": "Kompas",
+                    "scenario_code": "K2",
+                    "scenario_name": "Title + Description",
+                    "jumlah_test": 1000,
+                    "correct_predictions": 969,
+                    "incorrect_predictions": 31,
+                    "accuracy": 0.969,
+                    "precision_macro": 0.9691714932985146,
+                    "recall_macro": 0.969,
+                    "f1_macro": 0.9690358618620192,
+                    "precision_weighted": 0.9691714932985146,
+                    "recall_weighted": 0.969,
+                    "f1_weighted": 0.9690358618620192,
+                    "log_loss": 0.0911827109664612,
+                    "inference_time_seconds": 0.537634,
+                    "average_inference_ms_per_sample": 0.537634,
+                    "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k2_best.keras",
+                    "test_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\test.npz",
+                    "prediction_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\predictions\\cnn_k2_predictions.csv"
+                },
+                "attention_bilstm_k2": {
+                    "experiment_name": "attention_bilstm_k2",
+                    "model": "attention_bilstm",
+                    "dataset": "Kompas",
+                    "scenario_code": "K2",
+                    "scenario_name": "Title + Description",
+                    "jumlah_test": 1000,
+                    "correct_predictions": 968,
+                    "incorrect_predictions": 32,
+                    "accuracy": 0.968,
+                    "precision_macro": 0.9683403314989336,
+                    "recall_macro": 0.968,
+                    "f1_macro": 0.9680427375865936,
+                    "precision_weighted": 0.9683403314989336,
+                    "recall_weighted": 0.968,
+                    "f1_weighted": 0.9680427375865938,
+                    "log_loss": 0.1115295842585004,
+                    "inference_time_seconds": 1.066817,
+                    "average_inference_ms_per_sample": 1.066817,
+                    "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k2_best.keras",
+                    "test_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2\\test.npz",
+                    "prediction_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\predictions\\attention_bilstm_k2_predictions.csv"
+                }
+            }
+        },
+        "deployment_config": {
+            "status": "success",
+            "deployment": {
+                "path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\deployment\\deployment_config.json",
+                "filename": "deployment_config.json",
+                "size_bytes": 3734,
+                "sha256": "46ce8f340ab009ed7fffef4a7c0064a88ceab2304e3ccc8e763072d26a1475e7"
+            }
+        }
+    },
+    "errors": []
 }

@@ -1,20 +1,28 @@
 {
+    "generated_at": "2026-07-17T22:11:17",
     "model": "cnn_k2",
     "dataset": "Kompas",
     "scenario_code": "K2",
     "scenario_name": "Title + Description",
     "source_summary": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\tables\\shap\\local\\cnn_k2_local_shap_summary.csv",
     "source_token_contributions": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\tables\\shap\\local\\cnn_k2_local_token_contributions.csv",
+    "visualization_type": "Cumulative SHAP waterfall plot",
     "top_n_tokens_per_plot": 15,
-    "number_of_samples": 8,
-    "successful_plots": 8,
+    "residual_label": "Token lainnya",
+    "number_of_samples": 7,
+    "successful_plots": 7,
     "failed_plots": 0,
+    "reconstruction_tolerance": 0.02,
+    "maximum_reconstruction_error": 1.1102230246251565e-16,
     "special_tokens_excluded": [
         "",
-        "[OOV]",
-        "[PAD]",
-        "[SEP]",
-        "[UNK]"
+        "OOV",
+        "PAD",
+        "SEP",
+        "UNK"
     ],
-    "visualization_note": "This is a waterfall-style local SHAP visualization built from signed token-level SHAP contributions. Positive values support the predicted class and negative values reduce the predicted class score."
+    "token_ordering": "Descending absolute SHAP contribution.",
+    "residual_method": "Prediction confidence minus baseline probability minus the sum of the displayed token contributions.",
+    "waterfall_equation": "baseline probability + displayed token contributions + other token contribution = prediction probability",
+    "interpretation_note": "Positive SHAP values increase the predicted class probability, while negative SHAP values decrease it. Intermediate cumulative values depend on the selected display order and are not sequential model predictions."
 }

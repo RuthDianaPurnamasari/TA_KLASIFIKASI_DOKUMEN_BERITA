@@ -1,15 +1,21 @@
-﻿dataset,text_field,unit,jumlah_data,minimum,maksimum,mean,median,std,q1,q3,jumlah_kosong
-kompas,title,word_count,10000,2,20,10.71,11.0,2.0,9.0,12.0,0
-kompas,title,char_count,10000,10,117,68.33,68.0,10.96,62.0,75.0,0
-kompas,description,word_count,10000,7,40,17.87,18.0,3.15,16.0,20.0,0
-kompas,description,char_count,10000,54,286,124.83,127.0,19.64,112.0,139.0,0
-kompas,content,word_count,10000,41,1963,330.39,325.0,92.97,282.0,374.0,0
-kompas,content,char_count,10000,284,14639,2379.47,2343.0,681.64,2029.0,2698.0,0
-ag_news_train,title,word_count,120000,1,19,6.78,7.0,2.09,5.0,8.0,0
-ag_news_train,title,char_count,120000,6,115,42.04,41.0,13.55,33.0,49.0,0
-ag_news_train,description,word_count,120000,1,173,31.06,30.0,9.76,25.0,36.0,0
-ag_news_train,description,char_count,120000,6,974,192.85,188.0,63.99,154.0,218.0,0
-ag_news_test,title,word_count,7532,1,17,6.36,6.0,2.21,5.0,8.0,0
-ag_news_test,title,char_count,7532,3,94,38.79,39.0,13.49,31.0,47.0,0
-ag_news_test,description,word_count,7532,0,129,23.54,25.0,14.58,14.0,33.0,831
-ag_news_test,description,char_count,7532,0,818,143.57,156.0,89.34,84.0,202.0,831
+﻿dataset,text_field,text_field_display,unit,jumlah_data,minimum,maksimum,mean,median,std,q1,q3,p90,p95,p99,jumlah_kosong
+kompas,title,Title,word_count,9997,2,20,10.7146,11.0,1.997,9.0,12.0,13.0,14.0,16.0,0
+kompas,title,Title,char_count,9997,10,117,68.3275,68.0,10.9557,62.0,75.0,82.0,86.0,95.0,0
+kompas,description,Description,word_count,9997,7,40,17.8679,18.0,3.1512,16.0,20.0,22.0,23.0,25.0,0
+kompas,description,Description,char_count,9997,54,286,124.8267,127.0,19.6434,112.0,139.0,148.0,150.0,169.0,0
+kompas,content,Content,word_count,9997,41,1963,330.3673,325.0,92.9743,282.0,374.0,424.0,464.0,574.04,0
+kompas,content,Content,char_count,9997,284,14639,2379.3167,2343.0,681.6815,2029.0,2697.0,3063.4,3352.0,4216.08,0
+kompas,title_description,Title + Description,word_count,9997,12,51,28.5825,29.0,4.022,26.0,31.0,34.0,35.0,38.0,0
+kompas,title_description,Title + Description,char_count,9997,80,353,194.1542,195.0,22.7403,179.0,210.0,222.0,229.0,245.0,0
+ag_news_train,title,Title,word_count,119817,1,19,6.7841,7.0,2.0887,5.0,8.0,9.0,10.0,12.0,0
+ag_news_train,title,Title,char_count,119817,6,115,42.0418,41.0,13.5583,33.0,49.0,59.0,64.0,88.0,0
+ag_news_train,description,Description,word_count,119817,1,173,31.0607,30.0,9.7612,25.0,36.0,41.0,45.0,63.0,0
+ag_news_train,description,Description,char_count,119817,6,974,192.8511,188.0,63.9994,154.0,218.0,252.0,296.0,419.0,0
+ag_news_train,title_description,Title + Description,word_count,119817,4,177,37.8447,37.0,10.0895,32.0,43.0,48.0,53.0,70.0,0
+ag_news_train,title_description,Title + Description,char_count,119817,17,1012,235.893,231.0,66.0702,196.0,266.0,299.0,342.0,461.0,0
+ag_news_test,title,Title,word_count,7600,1,17,6.7578,7.0,2.1094,5.0,8.0,10.0,11.0,12.0,0
+ag_news_test,title,Title,char_count,7600,6,96,41.857,41.0,13.4621,33.0,49.0,59.0,65.0,87.0,0
+ag_news_test,description,Description,word_count,7600,4,129,30.9633,30.0,9.8038,25.0,36.0,41.0,45.0,62.0,0
+ag_news_test,description,Description,char_count,7600,37,818,191.8772,187.0,62.7255,154.0,217.0,251.0,288.05,402.0,0
+ag_news_test,title_description,Title + Description,word_count,7600,11,137,37.7211,37.0,10.1294,32.0,43.0,48.0,52.0,69.0,0
+ag_news_test,title_description,Title + Description,char_count,7600,100,880,234.7342,231.0,64.8458,196.0,265.0,298.0,335.0,443.01,0

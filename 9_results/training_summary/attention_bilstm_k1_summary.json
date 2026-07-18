@@ -1,30 +1,94 @@
 {
+    "status": "success",
     "experiment_name": "attention_bilstm_k1",
     "model": "Attention-BiLSTM",
+    "model_code": "attention_bilstm",
     "dataset": "Kompas",
     "scenario_code": "K1",
     "scenario_name": "Title",
+    "started_at": "2026-07-17T02:43:37",
+    "finished_at": "2026-07-17T02:44:10",
     "jumlah_train": 7997,
     "jumlah_validation": 1000,
-    "vocabulary_size": 10234,
+    "train_label_distribution": {
+        "0": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "1": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "2": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "3": {
+            "count": 1997,
+            "percentage": 24.9719
+        }
+    },
+    "validation_label_distribution": {
+        "0": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "1": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "2": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "3": {
+            "count": 250,
+            "percentage": 25.0
+        }
+    },
+    "train_validation_document_overlap": 0,
+    "vocabulary_size": 15492,
+    "max_token_id_train": 15488,
+    "max_token_id_validation": 15488,
     "max_sequence_length": 20,
     "num_classes": 4,
     "embedding_dim": 128,
     "lstm_units_per_direction": 64,
+    "bilstm_output_units": 128,
     "attention_units": 64,
+    "dense_units": 128,
+    "spatial_dropout_rate": 0.2,
+    "recurrent_dropout_rate": 0.0,
+    "dropout_rate": 0.5,
     "epochs_maximum": 20,
-    "epochs_completed": 5,
+    "epochs_completed": 7,
     "batch_size": 64,
     "learning_rate_initial": 0.001,
-    "training_time_seconds": 35.0863,
-    "training_time_minutes": 0.5848,
+    "random_seed": 42,
+    "monitor": "val_loss",
+    "selection_mode": "min",
+    "training_time_seconds": 31.831,
+    "training_time_minutes": 0.5305,
     "best_epoch": 2,
-    "best_train_loss": 0.1155141144990921,
-    "best_validation_loss": 0.23925089836120605,
-    "best_train_accuracy": 0.9689883589744568,
-    "best_validation_accuracy": 0.9240000247955322,
+    "best_train_loss": 0.11289366334676743,
+    "best_validation_loss": 0.18923011422157288,
+    "best_train_accuracy": 0.9678629636764526,
+    "best_validation_accuracy": 0.9470000267028809,
     "learning_rate_at_best_epoch": 0.0010000000474974513,
+    "best_checkpoint_validation_loss": 0.18923011422157288,
+    "best_checkpoint_validation_accuracy": 0.9470000267028809,
+    "final_model_source": "best_validation_loss_checkpoint",
+    "tensorflow_environment": {
+        "tensorflow_version": "2.20.0",
+        "gpu_available": false,
+        "gpu_count": 0,
+        "gpu_devices": [],
+        "cpu_count_detected": 1
+    },
     "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\attention_bilstm_k1_best.keras",
     "final_model_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\final_models\\attention_bilstm_k1_final.keras",
-    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\attention_bilstm_k1_history.csv"
+    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\attention_bilstm_k1_history.csv",
+    "summary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_summary\\attention_bilstm_k1_summary.json",
+    "test_set_used_during_training": false,
+    "k4_used": false
 }

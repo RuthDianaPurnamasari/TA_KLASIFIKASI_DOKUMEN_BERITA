@@ -9,8 +9,8 @@
 # menggunakan test set.
 #
 # Model yang dievaluasi:
-# - CNN: K1, K2, K3, K4, A1, A2
-# - Attention-BiLSTM: K1, K2, K3, K4, A1, A2
+# - CNN: K1, K2, K3, A1, A2
+# - Attention-BiLSTM: K1, K2, K3, A1, A2
 #
 # Output utama:
 # - Metrik keseluruhan setiap model
@@ -76,11 +76,16 @@ if str(MODELING_DIR) not in sys.path:
 # IMPORT MODULE PROJECT
 # =============================================================================
 #
-# AttentionPooling1D harus diimpor agar TensorFlow dapat mengenali
-# custom layer saat memuat model Attention-BiLSTM.
+# Custom layer CNN dan Attention-BiLSTM harus diimpor
+# agar TensorFlow dapat mengenalinya saat memuat checkpoint.
 
 from attention_bilstm_model import (  # noqa: E402
     AttentionPooling1D,
+)
+
+from cnn_model import (
+    MaskedGlobalMaxPooling1D,
+    ZeroPaddingEmbeddingOutput,
 )
 
 from training_config import (  # noqa: E402
@@ -545,17 +550,15 @@ def load_best_model(
     scenario_code: str,
 ) -> tf.keras.Model:
     """
-    Memuat checkpoint terbaik.
+    Memuat checkpoint terbaik untuk inferensi test set.
 
-    compile=False digunakan karena model hanya dipakai
-    untuk inferensi. Metrik dihitung menggunakan sklearn.
+    compile=False digunakan karena metrik evaluasi dihitung
+    secara terpisah menggunakan scikit-learn.
     """
 
-    checkpoint_path = (
-        get_checkpoint_path(
-            model_name=model_name,
-            scenario_code=scenario_code,
-        )
+    checkpoint_path = get_checkpoint_path(
+        model_name=model_name,
+        scenario_code=scenario_code,
     )
 
     if not checkpoint_path.exists():
@@ -564,9 +567,21 @@ def load_best_model(
             f"{checkpoint_path}"
         )
 
+    if checkpoint_path.stat().st_size == 0:
+        raise ValueError(
+            "Checkpoint model ditemukan, tetapi file kosong:\n"
+            f"{checkpoint_path}"
+        )
+
     custom_objects = {
         "AttentionPooling1D":
             AttentionPooling1D,
+
+        "ZeroPaddingEmbeddingOutput":
+            ZeroPaddingEmbeddingOutput,
+
+        "MaskedGlobalMaxPooling1D":
+            MaskedGlobalMaxPooling1D,
     }
 
     model = tf.keras.models.load_model(
@@ -636,24 +651,37 @@ def calculate_overall_metrics(
     y_pred: np.ndarray,
     probabilities: np.ndarray,
 ) -> dict[str, float]:
+    """
+    Menghitung metrik klasifikasi keseluruhan.
 
-    probabilities = np.clip(
+    Metrik:
+    - accuracy;
+    - macro precision;
+    - macro recall;
+    - macro F1-score;
+    - weighted precision;
+    - weighted recall;
+    - weighted F1-score;
+    - log loss.
+    """
+
+    labels = list(
+        range(NUM_CLASSES)
+    )
+
+    probabilities_safe = np.clip(
         probabilities,
         1e-7,
         1.0 - 1e-7,
     )
 
-    probabilities = (
-        probabilities
-        / probabilities.sum(
+    probabilities_safe = (
+        probabilities_safe
+        / probabilities_safe.sum(
             axis=1,
             keepdims=True,
         )
     )
-    
-    """
-    Menghitung metrik klasifikasi keseluruhan.
-    """
 
     metrics = {
         "accuracy": float(
@@ -667,6 +695,7 @@ def calculate_overall_metrics(
             precision_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="macro",
                 zero_division=0,
             )
@@ -676,6 +705,7 @@ def calculate_overall_metrics(
             recall_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="macro",
                 zero_division=0,
             )
@@ -685,6 +715,7 @@ def calculate_overall_metrics(
             f1_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="macro",
                 zero_division=0,
             )
@@ -694,6 +725,7 @@ def calculate_overall_metrics(
             precision_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="weighted",
                 zero_division=0,
             )
@@ -703,6 +735,7 @@ def calculate_overall_metrics(
             recall_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="weighted",
                 zero_division=0,
             )
@@ -712,6 +745,7 @@ def calculate_overall_metrics(
             f1_score(
                 y_true,
                 y_pred,
+                labels=labels,
                 average="weighted",
                 zero_division=0,
             )
@@ -720,10 +754,8 @@ def calculate_overall_metrics(
         "log_loss": float(
             log_loss(
                 y_true,
-                probabilities,
-                labels=list(
-                    range(NUM_CLASSES)
-                ),
+                probabilities_safe,
+                labels=labels,
             )
         ),
     }
@@ -1211,9 +1243,29 @@ def evaluate_single_model(
             f"Expected   : "
             f"{max_sequence_length}"
         )
+    if model.output_shape[-1] != NUM_CLASSES:
+        raise ValueError(
+            f"{experiment_name}: jumlah output model "
+            "tidak sesuai.\n"
+            f"Model output : {model.output_shape}\n"
+            f"Expected     : {NUM_CLASSES} kelas"
+        )
 
     print(
         "Melakukan prediksi test set..."
+    )
+
+    # Warm-up agar proses graph tracing tidak ikut
+    # dihitung sebagai waktu inferensi utama.
+    warmup_size = min(
+        EVALUATION_BATCH_SIZE,
+        len(X_test),
+    )
+
+    _ = model.predict(
+        X_test[:warmup_size],
+        batch_size=warmup_size,
+        verbose=0,
     )
 
     prediction_start = (
@@ -1747,7 +1799,7 @@ def save_evaluation_summary(
 
 def main() -> None:
     """
-    Mengevaluasi seluruh 12 eksperimen.
+    Mengevaluasi seluruh 10 eksperimen.
     """
 
     print("=" * 80)

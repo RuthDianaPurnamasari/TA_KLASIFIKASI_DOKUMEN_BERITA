@@ -1,35 +1,109 @@
 {
+    "generated_at": "2026-07-17T22:57:59",
+    "project": "TA Klasifikasi Dokumen Berita",
     "dataset": "Kompas",
     "scenario_code": "K2",
     "scenario_name": "Title + Description",
     "sequence_length": 60,
     "num_classes": 4,
+    "vocabulary_size": 15492,
     "models": {
         "cnn": {
             "experiment_name": "cnn_k2",
-            "display_name": "CNN"
+            "display_name": "CNN",
+            "filename": "cnn_k2.keras",
+            "available": true,
+            "accuracy": 0.969,
+            "precision_macro": 0.9691714932985146,
+            "recall_macro": 0.969,
+            "f1_macro": 0.9690358618620192,
+            "log_loss": 0.0911827109664612,
+            "inference_time_seconds": 0.537634,
+            "average_inference_ms_per_sample": 0.537634,
+            "sha256": "07db4188fb34394c31478b2e56f20fff5bcfd1f39e6876c08543901e9ceceb4f"
         },
         "attention_bilstm": {
             "experiment_name": "attention_bilstm_k2",
-            "display_name": "Attention-BiLSTM"
+            "display_name": "Attention-BiLSTM",
+            "filename": "attention_bilstm_k2.keras",
+            "available": true,
+            "accuracy": 0.968,
+            "precision_macro": 0.9683403314989336,
+            "recall_macro": 0.968,
+            "f1_macro": 0.9680427375865936,
+            "log_loss": 0.1115295842585004,
+            "inference_time_seconds": 1.066817,
+            "average_inference_ms_per_sample": 1.066817,
+            "sha256": "5f3d015572f28374fa298a88e7947652ab8ff1c2ce746ab246d06d5367a6a192"
         }
     },
     "best_research_model": {
         "experiment_name": "cnn_k2",
         "model_name": "CNN",
-        "accuracy": 0.958
+        "accuracy": 0.969,
+        "f1_macro": 0.9690358618620192,
+        "log_loss": 0.0911827109664612
     },
     "input": {
         "required_fields": [
             "title",
             "description"
         ],
-        "text_combination": "title + [SEP] + description"
+        "separator_token": "[SEP]",
+        "text_combination": "title + [SEP] + description",
+        "validation": "Minimal salah satu field harus berisi teks."
     },
     "labels": {
-        "0": "bola",
-        "1": "global",
-        "2": "money",
-        "3": "tekno"
+        "index_to_label": {
+            "0": "bola",
+            "1": "global",
+            "2": "money",
+            "3": "tekno"
+        },
+        "label_to_index": {
+            "bola": 0,
+            "global": 1,
+            "money": 2,
+            "tekno": 3
+        }
+    },
+    "artifacts": {
+        "vocabulary": "vocabulary.txt",
+        "vectorizer_config": "vectorizer_config.json",
+        "label_mapping": "label_mapping.json"
+    },
+    "vectorizer_configuration_source": {
+        "framework": "TensorFlow/Keras",
+        "layer": "TextVectorization",
+        "dataset": "Kompas",
+        "scenario_code": "K2",
+        "scenario_name": "Title + Description",
+        "adapt_split": "train",
+        "vocabulary_group": "kompas_shared",
+        "vocabulary_adapt_scenario": "K2",
+        "shared_vocabulary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\_shared_vocabularies\\kompas_shared\\vocabulary.txt",
+        "shared_vocabulary_sha256": "835bf7e343c424a48d6647ddca25e086fda29fa1f5cff82aca0f92f9a684bd5e",
+        "standardize": null,
+        "split": "whitespace",
+        "output_mode": "int",
+        "max_tokens": 50000,
+        "actual_vocabulary_size": 15492,
+        "output_sequence_length": 60,
+        "padding_value": 0,
+        "oov_index": 1,
+        "separator_token": "[SEP]",
+        "label_to_index": {
+            "bola": 0,
+            "global": 1,
+            "money": 2,
+            "tekno": 3
+        },
+        "index_to_label": {
+            "0": "bola",
+            "1": "global",
+            "2": "money",
+            "3": "tekno"
+        },
+        "random_seed": 42
     }
 }

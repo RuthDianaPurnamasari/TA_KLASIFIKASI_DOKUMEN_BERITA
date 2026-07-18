@@ -5,7 +5,7 @@
 # 6_evaluation/03_confusion_matrices.py
 #
 # Tujuan:
-# Membuat confusion matrix untuk 10 eksperimen utama:
+# Membuat confusion matrix untuk 10 eksperimen final:
 # - Kompas: K1, K2, K3
 # - AG News: A1, A2
 # - Model: CNN dan Attention-BiLSTM
@@ -15,13 +15,15 @@
 #
 # Output:
 # - Confusion matrix jumlah data
-# - Confusion matrix normalized per kelas aktual
+# - Confusion matrix normalized berdasarkan kelas aktual
+# - Ringkasan performa setiap kelas
 # - Ringkasan kesalahan klasifikasi
 # =============================================================================
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -92,6 +94,8 @@ EXPERIMENT_ORDER = [
     "attention_bilstm_a2",
 ]
 
+EXPECTED_NUM_CLASSES = 4
+
 
 # =============================================================================
 # MEMBUAT FOLDER OUTPUT
@@ -99,18 +103,19 @@ EXPERIMENT_ORDER = [
 
 def create_output_directories() -> None:
     """
-    Membuat folder output jika belum tersedia.
+    Membuat seluruh folder output jika belum tersedia.
     """
 
-    FIGURES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    directories = [
+        FIGURES_DIR,
+        TABLES_DIR,
+    ]
 
-    TABLES_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    for directory in directories:
+        directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
 
 # =============================================================================
@@ -119,12 +124,19 @@ def create_output_directories() -> None:
 
 def load_confusion_data() -> pd.DataFrame:
     """
-    Membaca data confusion matrix dari hasil evaluasi test set.
+    Membaca dan memvalidasi data confusion matrix
+    dari hasil evaluasi test set.
     """
 
     if not CONFUSION_DATA_PATH.exists():
         raise FileNotFoundError(
             "File confusion matrix tidak ditemukan:\n"
+            f"{CONFUSION_DATA_PATH}"
+        )
+
+    if CONFUSION_DATA_PATH.stat().st_size == 0:
+        raise ValueError(
+            "File confusion matrix ditemukan, tetapi kosong:\n"
             f"{CONFUSION_DATA_PATH}"
         )
 
@@ -153,19 +165,292 @@ def load_confusion_data() -> pd.DataFrame:
     if missing_columns:
         raise KeyError(
             "Kolom confusion matrix tidak lengkap.\n"
-            f"Kolom hilang: {missing_columns}"
+            f"Kolom hilang: {sorted(missing_columns)}"
         )
 
-    dataframe["count"] = pd.to_numeric(
-        dataframe["count"],
-        errors="coerce",
-    ).fillna(0).astype(int)
+    dataframe = dataframe.copy()
+
+    string_columns = [
+        "experiment_name",
+        "model",
+        "dataset",
+        "scenario_code",
+        "actual_class",
+        "predicted_class",
+    ]
+
+    for column in string_columns:
+        dataframe[column] = (
+            dataframe[column]
+            .astype(str)
+            .str.strip()
+        )
+
+    numeric_columns = [
+        "actual_index",
+        "predicted_index",
+        "count",
+    ]
+
+    for column in numeric_columns:
+        dataframe[column] = pd.to_numeric(
+            dataframe[column],
+            errors="coerce",
+        )
+
+    if dataframe[numeric_columns].isna().any().any():
+        invalid_rows = dataframe[
+            dataframe[numeric_columns]
+            .isna()
+            .any(axis=1)
+        ]
+
+        raise ValueError(
+            "Ditemukan nilai numerik yang tidak valid "
+            "pada data confusion matrix.\n"
+            f"Jumlah baris tidak valid: {len(invalid_rows)}"
+        )
+
+    dataframe[
+        "actual_index"
+    ] = dataframe[
+        "actual_index"
+    ].astype(int)
+
+    dataframe[
+        "predicted_index"
+    ] = dataframe[
+        "predicted_index"
+    ].astype(int)
+
+    dataframe[
+        "count"
+    ] = dataframe[
+        "count"
+    ].astype(int)
+
+    if (
+        dataframe["count"]
+        < 0
+    ).any():
+        raise ValueError(
+            "Ditemukan nilai count negatif "
+            "pada data confusion matrix."
+        )
+
+    if (
+        dataframe["actual_index"]
+        < 0
+    ).any():
+        raise ValueError(
+            "Ditemukan actual_index negatif."
+        )
+
+    if (
+        dataframe["predicted_index"]
+        < 0
+    ).any():
+        raise ValueError(
+            "Ditemukan predicted_index negatif."
+        )
+
+    if dataframe.empty:
+        raise ValueError(
+            "Data confusion matrix kosong."
+        )
 
     return dataframe
 
 
 # =============================================================================
-# MEMBENTUK MATRIX
+# VALIDASI EKSPERIMEN
+# =============================================================================
+
+def validate_available_experiments(
+    confusion_data: pd.DataFrame,
+) -> None:
+    """
+    Memastikan data confusion matrix mencakup seluruh
+    10 eksperimen final.
+    """
+
+    available_experiments = set(
+        confusion_data[
+            "experiment_name"
+        ].unique()
+    )
+
+    expected_experiments = set(
+        EXPERIMENT_ORDER
+    )
+
+    missing_experiments = (
+        expected_experiments
+        - available_experiments
+    )
+
+    unexpected_experiments = (
+        available_experiments
+        - expected_experiments
+    )
+
+    if missing_experiments:
+        raise ValueError(
+            "Data confusion matrix belum mencakup "
+            "seluruh eksperimen final.\n"
+            f"Eksperimen hilang: "
+            f"{sorted(missing_experiments)}"
+        )
+
+    if unexpected_experiments:
+        print(
+            "\nPeringatan: ditemukan eksperimen "
+            "tambahan yang tidak diproses:"
+        )
+
+        for experiment_name in sorted(
+            unexpected_experiments
+        ):
+            print(
+                f"- {experiment_name}"
+            )
+
+
+# =============================================================================
+# VALIDASI DATA SATU EKSPERIMEN
+# =============================================================================
+
+def validate_experiment_data(
+    experiment_data: pd.DataFrame,
+    experiment_name: str,
+) -> None:
+    """
+    Memvalidasi konsistensi data untuk satu eksperimen.
+    """
+
+    if experiment_data.empty:
+        raise ValueError(
+            f"{experiment_name}: data eksperimen kosong."
+        )
+
+    metadata_columns = [
+        "model",
+        "dataset",
+        "scenario_code",
+    ]
+
+    for column in metadata_columns:
+        unique_values = (
+            experiment_data[
+                column
+            ]
+            .dropna()
+            .unique()
+        )
+
+        if len(unique_values) != 1:
+            raise ValueError(
+                f"{experiment_name}: kolom {column} "
+                "tidak konsisten.\n"
+                f"Nilai ditemukan: "
+                f"{unique_values.tolist()}"
+            )
+
+    actual_indices = set(
+        experiment_data[
+            "actual_index"
+        ].astype(int)
+    )
+
+    predicted_indices = set(
+        experiment_data[
+            "predicted_index"
+        ].astype(int)
+    )
+
+    expected_indices = set(
+        range(
+            EXPECTED_NUM_CLASSES
+        )
+    )
+
+    if actual_indices != expected_indices:
+        raise ValueError(
+            f"{experiment_name}: indeks kelas aktual "
+            "tidak lengkap.\n"
+            f"Expected: {sorted(expected_indices)}\n"
+            f"Actual  : {sorted(actual_indices)}"
+        )
+
+    if predicted_indices != expected_indices:
+        raise ValueError(
+            f"{experiment_name}: indeks kelas prediksi "
+            "tidak lengkap.\n"
+            f"Expected: {sorted(expected_indices)}\n"
+            f"Actual  : {sorted(predicted_indices)}"
+        )
+
+    actual_class_mapping = (
+        experiment_data[
+            [
+                "actual_index",
+                "actual_class",
+            ]
+        ]
+        .drop_duplicates()
+    )
+
+    actual_mapping_counts = (
+        actual_class_mapping
+        .groupby(
+            "actual_index"
+        )[
+            "actual_class"
+        ]
+        .nunique()
+    )
+
+    if (
+        actual_mapping_counts
+        != 1
+    ).any():
+        raise ValueError(
+            f"{experiment_name}: terdapat actual_index "
+            "yang memiliki lebih dari satu nama kelas."
+        )
+
+    predicted_class_mapping = (
+        experiment_data[
+            [
+                "predicted_index",
+                "predicted_class",
+            ]
+        ]
+        .drop_duplicates()
+    )
+
+    predicted_mapping_counts = (
+        predicted_class_mapping
+        .groupby(
+            "predicted_index"
+        )[
+            "predicted_class"
+        ]
+        .nunique()
+    )
+
+    if (
+        predicted_mapping_counts
+        != 1
+    ).any():
+        raise ValueError(
+            f"{experiment_name}: terdapat predicted_index "
+            "yang memiliki lebih dari satu nama kelas."
+        )
+
+
+# =============================================================================
+# MEMBENTUK CONFUSION MATRIX
 # =============================================================================
 
 def build_confusion_matrix(
@@ -173,6 +458,9 @@ def build_confusion_matrix(
 ) -> tuple[np.ndarray, list[str]]:
     """
     Membentuk array confusion matrix dan urutan nama kelas.
+
+    Apabila terdapat baris pasangan kelas yang duplikat,
+    nilai count akan dijumlahkan menggunakan +=.
     """
 
     class_information = (
@@ -185,6 +473,9 @@ def build_confusion_matrix(
         .drop_duplicates()
         .sort_values(
             "actual_index"
+        )
+        .reset_index(
+            drop=True
         )
     )
 
@@ -208,12 +499,20 @@ def build_confusion_matrix(
         class_indices
     )
 
+    if matrix_size != EXPECTED_NUM_CLASSES:
+        raise ValueError(
+            "Jumlah kelas pada confusion matrix "
+            "tidak sesuai.\n"
+            f"Expected: {EXPECTED_NUM_CLASSES}\n"
+            f"Actual  : {matrix_size}"
+        )
+
     matrix = np.zeros(
         (
             matrix_size,
             matrix_size,
         ),
-        dtype=int,
+        dtype=np.int64,
     )
 
     index_position = {
@@ -225,33 +524,60 @@ def build_confusion_matrix(
     for row in experiment_data.itertuples(
         index=False
     ):
+        actual_index = int(
+            row.actual_index
+        )
+
+        predicted_index = int(
+            row.predicted_index
+        )
+
+        if actual_index not in index_position:
+            raise KeyError(
+                "Indeks kelas aktual tidak ditemukan "
+                f"dalam mapping: {actual_index}"
+            )
+
+        if predicted_index not in index_position:
+            raise KeyError(
+                "Indeks kelas prediksi tidak ditemukan "
+                f"dalam mapping: {predicted_index}"
+            )
+
         actual_position = index_position[
-            int(row.actual_index)
+            actual_index
         ]
 
         predicted_position = index_position[
-            int(row.predicted_index)
+            predicted_index
         ]
 
         matrix[
             actual_position,
             predicted_position,
-        ] = int(row.count)
+        ] += int(
+            row.count
+        )
 
-    return matrix, class_names
+    return (
+        matrix,
+        class_names,
+    )
 
 
 # =============================================================================
-# NORMALISASI MATRIX
+# NORMALISASI CONFUSION MATRIX
 # =============================================================================
 
 def normalize_confusion_matrix(
     matrix: np.ndarray,
 ) -> np.ndarray:
     """
-    Menormalisasi confusion matrix berdasarkan jumlah kelas aktual.
+    Menormalisasi confusion matrix berdasarkan jumlah
+    data pada setiap kelas aktual.
 
-    Setiap baris akan berjumlah 1 atau 100%.
+    Setiap baris memiliki total 1, kecuali kelas
+    yang tidak mempunyai data.
     """
 
     row_totals = matrix.sum(
@@ -264,7 +590,7 @@ def normalize_confusion_matrix(
         row_totals,
         out=np.zeros_like(
             matrix,
-            dtype=float,
+            dtype=np.float64,
         ),
         where=row_totals != 0,
     )
@@ -273,7 +599,7 @@ def normalize_confusion_matrix(
 
 
 # =============================================================================
-# MEMBUAT HEATMAP MANUAL
+# MEMBUAT HEATMAP CONFUSION MATRIX
 # =============================================================================
 
 def plot_confusion_matrix(
@@ -287,52 +613,59 @@ def plot_confusion_matrix(
     Membuat visualisasi confusion matrix menggunakan matplotlib.
     """
 
-    plt.figure(
+    figure, axis = plt.subplots(
         figsize=(8, 7)
     )
 
-    image = plt.imshow(
+    image = axis.imshow(
         matrix,
         interpolation="nearest",
         aspect="auto",
     )
 
-    plt.colorbar(
-        image
+    figure.colorbar(
+        image,
+        ax=axis,
     )
 
     tick_positions = np.arange(
         len(class_names)
     )
 
-    plt.xticks(
-        tick_positions,
+    axis.set_xticks(
+        tick_positions
+    )
+
+    axis.set_yticks(
+        tick_positions
+    )
+
+    axis.set_xticklabels(
         class_names,
         rotation=35,
         ha="right",
     )
 
-    plt.yticks(
-        tick_positions,
-        class_names,
+    axis.set_yticklabels(
+        class_names
     )
 
-    plt.xlabel(
+    axis.set_xlabel(
         "Predicted Class"
     )
 
-    plt.ylabel(
+    axis.set_ylabel(
         "Actual Class"
     )
 
-    plt.title(
+    axis.set_title(
         title
     )
 
     threshold = (
-        matrix.max() / 2
+        float(matrix.max()) / 2.0
         if matrix.size > 0
-        else 0
+        else 0.0
     )
 
     for row_index in range(
@@ -361,7 +694,7 @@ def plot_confusion_matrix(
                 else "black"
             )
 
-            plt.text(
+            axis.text(
                 column_index,
                 row_index,
                 display_text,
@@ -371,19 +704,21 @@ def plot_confusion_matrix(
                 fontsize=10,
             )
 
-    plt.tight_layout()
+    figure.tight_layout()
 
-    plt.savefig(
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close()
+    plt.close(
+        figure
+    )
 
 
 # =============================================================================
-# ANALISIS KESALAHAN PER KELAS
+# ANALISIS PERFORMA PER KELAS
 # =============================================================================
 
 def analyze_class_performance(
@@ -393,12 +728,16 @@ def analyze_class_performance(
     model_name: str,
     dataset_name: str,
     scenario_code: str,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
-    Menghitung jumlah benar, salah, dan recall setiap kelas.
+    Menghitung jumlah prediksi benar, salah,
+    recall, dan kelas yang paling sering tertukar
+    untuk setiap kelas aktual.
     """
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
     for class_index, class_name in enumerate(
         class_names
@@ -423,7 +762,8 @@ def analyze_class_performance(
         )
 
         recall = (
-            correct / total_actual
+            correct
+            / total_actual
             if total_actual > 0
             else 0.0
         )
@@ -474,6 +814,9 @@ def analyze_class_performance(
                 "scenario_code":
                     scenario_code,
 
+                "class_index":
+                    class_index,
+
                 "actual_class":
                     class_name,
 
@@ -511,16 +854,26 @@ def analyze_misclassifications(
     model_name: str,
     dataset_name: str,
     scenario_code: str,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
-    Menyimpan seluruh pasangan salah klasifikasi.
+    Menyimpan seluruh pasangan kelas yang mengalami
+    salah klasifikasi.
     """
 
-    rows = []
+    rows: list[
+        dict[str, Any]
+    ] = []
 
     for actual_index, actual_class in enumerate(
         class_names
     ):
+        total_actual = int(
+            matrix[
+                actual_index,
+                :
+            ].sum()
+        )
+
         for predicted_index, predicted_class in enumerate(
             class_names
         ):
@@ -537,15 +890,10 @@ def analyze_misclassifications(
             if count == 0:
                 continue
 
-            total_actual = int(
-                matrix[
-                    actual_index,
-                    :
-                ].sum()
-            )
-
             percentage = (
-                count / total_actual * 100
+                count
+                / total_actual
+                * 100.0
                 if total_actual > 0
                 else 0.0
             )
@@ -564,8 +912,14 @@ def analyze_misclassifications(
                     "scenario_code":
                         scenario_code,
 
+                    "actual_index":
+                        actual_index,
+
                     "actual_class":
                         actual_class,
+
+                    "predicted_index":
+                        predicted_index,
 
                     "predicted_class":
                         predicted_class,
@@ -587,40 +941,57 @@ def analyze_misclassifications(
 
 def main() -> None:
     """
-    Membuat confusion matrix seluruh eksperimen utama.
+    Membuat confusion matrix untuk seluruh
+    10 eksperimen final.
     """
 
     print("=" * 80)
+
     print(
         "STEP 6.3 - CONFUSION MATRICES"
     )
+
     print("=" * 80)
 
     create_output_directories()
 
     confusion_data = load_confusion_data()
 
-    available_experiments = set(
-        confusion_data[
-            "experiment_name"
-        ].unique()
+    validate_available_experiments(
+        confusion_data
     )
 
-    experiments_to_process = [
-        experiment_name
-        for experiment_name
-        in EXPERIMENT_ORDER
-        if experiment_name
-        in available_experiments
-    ]
+    experiments_to_process = (
+        EXPERIMENT_ORDER.copy()
+    )
 
     print(
         f"\nJumlah eksperimen: "
         f"{len(experiments_to_process)}"
     )
 
-    summary_rows = []
-    misclassification_rows = []
+    print("\nDaftar eksperimen:")
+
+    for number, experiment_name in enumerate(
+        experiments_to_process,
+        start=1,
+    ):
+        print(
+            f"{number:02d}. "
+            f"{experiment_name}"
+        )
+
+    summary_rows: list[
+        dict[str, Any]
+    ] = []
+
+    misclassification_rows: list[
+        dict[str, Any]
+    ] = []
+
+    status_rows: list[
+        dict[str, Any]
+    ] = []
 
     success_count = 0
     failed_count = 0
@@ -649,10 +1020,10 @@ def main() -> None:
                 .copy()
             )
 
-            if experiment_data.empty:
-                raise ValueError(
-                    "Data eksperimen kosong."
-                )
+            validate_experiment_data(
+                experiment_data=experiment_data,
+                experiment_name=experiment_name,
+            )
 
             model_name = str(
                 experiment_data[
@@ -704,7 +1075,7 @@ def main() -> None:
                 matrix=matrix,
                 class_names=class_names,
                 title=(
-                    f"Confusion Matrix - "
+                    "Confusion Matrix - "
                     f"{experiment_name.upper()}"
                 ),
                 output_path=count_output_path,
@@ -715,7 +1086,7 @@ def main() -> None:
                 matrix=normalized_matrix,
                 class_names=class_names,
                 title=(
-                    f"Normalized Confusion Matrix - "
+                    "Normalized Confusion Matrix - "
                     f"{experiment_name.upper()}"
                 ),
                 output_path=normalized_output_path,
@@ -768,9 +1139,59 @@ def main() -> None:
             )
 
             accuracy = (
-                correct_data / total_data
+                correct_data
+                / total_data
                 if total_data > 0
                 else 0.0
+            )
+
+            status_rows.append(
+                {
+                    "experiment_name":
+                        experiment_name,
+
+                    "model":
+                        model_name,
+
+                    "dataset":
+                        dataset_name,
+
+                    "scenario_code":
+                        scenario_code,
+
+                    "status":
+                        "success",
+
+                    "total_data":
+                        total_data,
+
+                    "correct_predictions":
+                        correct_data,
+
+                    "incorrect_predictions":
+                        incorrect_data,
+
+                    "accuracy":
+                        accuracy,
+
+                    "error_message":
+                        "",
+                }
+            )
+
+            print(
+                f"Dataset            : "
+                f"{dataset_name}"
+            )
+
+            print(
+                f"Model              : "
+                f"{model_name}"
+            )
+
+            print(
+                f"Skenario           : "
+                f"{scenario_code}"
             )
 
             print(
@@ -808,6 +1229,40 @@ def main() -> None:
         except Exception as error:
             failed_count += 1
 
+            status_rows.append(
+                {
+                    "experiment_name":
+                        experiment_name,
+
+                    "model":
+                        "",
+
+                    "dataset":
+                        "",
+
+                    "scenario_code":
+                        "",
+
+                    "status":
+                        "failed",
+
+                    "total_data":
+                        None,
+
+                    "correct_predictions":
+                        None,
+
+                    "incorrect_predictions":
+                        None,
+
+                    "accuracy":
+                        None,
+
+                    "error_message":
+                        str(error),
+                }
+            )
+
             print(
                 "Gagal membuat confusion matrix:"
             )
@@ -816,12 +1271,20 @@ def main() -> None:
                 str(error)
             )
 
+    # =========================================================================
+    # MEMBENTUK DATAFRAME
+    # =========================================================================
+
     summary_dataframe = pd.DataFrame(
         summary_rows
     )
 
     misclassification_dataframe = pd.DataFrame(
         misclassification_rows
+    )
+
+    status_dataframe = pd.DataFrame(
+        status_rows
     )
 
     if not summary_dataframe.empty:
@@ -832,7 +1295,7 @@ def main() -> None:
                     "dataset",
                     "scenario_code",
                     "model",
-                    "actual_class",
+                    "class_index",
                 ]
             )
             .reset_index(
@@ -858,6 +1321,21 @@ def main() -> None:
             )
         )
 
+    if not status_dataframe.empty:
+        status_dataframe = (
+            status_dataframe
+            .sort_values(
+                "experiment_name"
+            )
+            .reset_index(
+                drop=True
+            )
+        )
+
+    # =========================================================================
+    # MENYIMPAN LAPORAN
+    # =========================================================================
+
     summary_dataframe.to_csv(
         CONFUSION_SUMMARY_PATH,
         index=False,
@@ -870,10 +1348,18 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    print("\n" + "=" * 80)
+    # =========================================================================
+    # MENAMPILKAN RINGKASAN
+    # =========================================================================
+
+    print(
+        "\n" + "=" * 80
+    )
+
     print(
         "RINGKASAN CONFUSION MATRIX"
     )
+
     print("=" * 80)
 
     print(
@@ -922,6 +1408,7 @@ def main() -> None:
                 ascending=False,
             )
             .head(10)
+            .copy()
         )
 
         display_columns = [
@@ -932,6 +1419,18 @@ def main() -> None:
             "percentage_of_actual_class",
         ]
 
+        top_errors[
+            "percentage_of_actual_class"
+        ] = (
+            top_errors[
+                "percentage_of_actual_class"
+            ]
+            .map(
+                lambda value:
+                f"{value:.2f}%"
+            )
+        )
+
         print(
             "\n"
             + top_errors[
@@ -941,10 +1440,14 @@ def main() -> None:
             )
         )
 
-    print("\n" + "=" * 80)
+    print(
+        "\n" + "=" * 80
+    )
+
     print(
         "Tahap confusion matrices selesai."
     )
+
     print("=" * 80)
 
 

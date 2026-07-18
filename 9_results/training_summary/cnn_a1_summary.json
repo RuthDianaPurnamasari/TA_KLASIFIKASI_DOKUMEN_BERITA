@@ -1,27 +1,92 @@
 {
+    "status": "success",
     "experiment_name": "cnn_a1",
     "model": "CNN",
+    "model_code": "cnn",
     "dataset": "AG News",
     "scenario_code": "A1",
     "scenario_name": "Title",
-    "jumlah_train": 107883,
-    "jumlah_validation": 11988,
-    "vocabulary_size": 33320,
-    "max_sequence_length": 20,
+    "started_at": "2026-07-17T02:47:46",
+    "finished_at": "2026-07-17T03:00:16",
+    "jumlah_train": 107835,
+    "jumlah_validation": 11982,
+    "train_label_distribution": {
+        "0": {
+            "count": 26981,
+            "percentage": 25.0206
+        },
+        "1": {
+            "count": 26977,
+            "percentage": 25.0169
+        },
+        "2": {
+            "count": 26952,
+            "percentage": 24.9937
+        },
+        "3": {
+            "count": 26925,
+            "percentage": 24.9687
+        }
+    },
+    "validation_label_distribution": {
+        "0": {
+            "count": 2998,
+            "percentage": 25.0209
+        },
+        "1": {
+            "count": 2997,
+            "percentage": 25.0125
+        },
+        "2": {
+            "count": 2995,
+            "percentage": 24.9958
+        },
+        "3": {
+            "count": 2992,
+            "percentage": 24.9708
+        }
+    },
+    "train_validation_document_overlap": 0,
+    "vocabulary_size": 65049,
+    "max_token_id_train": 65021,
+    "max_token_id_validation": 65005,
+    "max_sequence_length": 60,
     "num_classes": 4,
+    "embedding_dim": 128,
+    "num_filters": 128,
+    "kernel_size": 5,
+    "dense_units": 128,
+    "spatial_dropout_rate": 0.2,
+    "dropout_rate": 0.5,
     "epochs_maximum": 20,
-    "epochs_completed": 5,
+    "epochs_completed": 6,
     "batch_size": 64,
     "learning_rate_initial": 0.001,
-    "training_time_seconds": 406.8999,
-    "training_time_minutes": 6.7817,
-    "best_epoch": 2,
-    "best_train_loss": 0.2720106244087219,
-    "best_validation_loss": 0.3852323591709137,
-    "best_train_accuracy": 0.9092257618904114,
-    "best_validation_accuracy": 0.869619607925415,
+    "random_seed": 42,
+    "monitor": "val_loss",
+    "selection_mode": "min",
+    "training_time_seconds": 747.253,
+    "training_time_minutes": 12.4542,
+    "best_epoch": 1,
+    "best_train_loss": 0.5011023283004761,
+    "best_validation_loss": 0.36581647396087646,
+    "best_train_accuracy": 0.8188436031341553,
+    "best_validation_accuracy": 0.8711400628089905,
     "learning_rate_at_best_epoch": 0.0010000000474974513,
+    "best_checkpoint_validation_loss": 0.36581647396087646,
+    "best_checkpoint_validation_accuracy": 0.8711400628089905,
+    "final_model_source": "best_validation_loss_checkpoint",
+    "tensorflow_environment": {
+        "tensorflow_version": "2.20.0",
+        "gpu_available": false,
+        "gpu_count": 0,
+        "gpu_devices": [],
+        "cpu_count_detected": 1
+    },
     "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_a1_best.keras",
     "final_model_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\final_models\\cnn_a1_final.keras",
-    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\cnn_a1_history.csv"
+    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\cnn_a1_history.csv",
+    "summary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_summary\\cnn_a1_summary.json",
+    "test_set_used_during_training": false,
+    "k4_used": false
 }

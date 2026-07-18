@@ -1,3 +1,3 @@
-﻿dataset,best_accuracy_experiment,best_accuracy_model,best_accuracy_scenario,best_accuracy,best_f1_experiment,best_f1_model,best_f1_scenario,best_f1_macro,fastest_experiment,fastest_model,fastest_scenario,fastest_inference_ms_per_sample
-AG News,cnn_a2,CNN,A2,0.887593783494105,cnn_a2,CNN,A2,0.8876093347433909,cnn_a2,CNN,A2,0.16881
-Kompas,cnn_k2,CNN,K2,0.958,cnn_k2,CNN,K2,0.958068344276824,cnn_k3,CNN,K3,0.456074
+﻿dataset,best_accuracy_experiment,best_accuracy_model,best_accuracy_scenario,best_accuracy_representation,best_accuracy,best_accuracy_f1_macro,best_f1_experiment,best_f1_model,best_f1_scenario,best_f1_macro,lowest_log_loss_experiment,lowest_log_loss,fastest_experiment,fastest_model,fastest_scenario,fastest_inference_ms_per_sample
+AG News,cnn_a2,CNN,A2,Title + Description,0.916842105263158,0.9168050709752416,cnn_a2,CNN,A2,0.9168050709752416,attention_bilstm_a2,0.2715089639987585,cnn_a2,CNN,A2,0.199604
+Kompas,cnn_k2,CNN,K2,Title + Description,0.969,0.9690358618620192,cnn_k2,CNN,K2,0.9690358618620192,cnn_k2,0.0911827109664612,cnn_k3,CNN,K3,0.47143

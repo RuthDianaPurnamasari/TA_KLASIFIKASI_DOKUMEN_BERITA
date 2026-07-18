@@ -2,60 +2,152 @@ from __future__ import annotations
 
 import re
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
 
-# ============================================================
-# MENAMBAHKAN ROOT PROJECT KE PYTHON PATH
-# ============================================================
+# =============================================================================
+# PROJECT PATH
+# =============================================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CURRENT_FILE = Path(__file__).resolve()
+PROJECT_ROOT = CURRENT_FILE.parents[1]
 
 if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+    sys.path.insert(
+        0,
+        str(PROJECT_ROOT),
+    )
 
+
+# =============================================================================
+# IMPORT PROJECT CONFIGURATION
+# =============================================================================
 
 from config import (  # noqa: E402
-    AG_NEWS_TEST_PROCESSED_PATH,
-    AG_NEWS_TRAIN_PROCESSED_PATH,
     FIGURES_DIR,
-    KOMPAS_PROCESSED_PATH,
     TABLES_DIR,
 )
 
 
-# ============================================================
-# OUTPUT FILE
-# ============================================================
+# =============================================================================
+# DATA DIRECTORY
+# =============================================================================
+
+PROCESSED_DATA_DIR = (
+    PROJECT_ROOT
+    / "2_data"
+    / "processed"
+)
+
+
+# =============================================================================
+# FINAL DATASET CANDIDATES
+# =============================================================================
+
+KOMPAS_FINAL_CANDIDATES = [
+    PROCESSED_DATA_DIR / "kompas_clean.csv",
+    PROCESSED_DATA_DIR / "kompas_cleaned.csv",
+    PROCESSED_DATA_DIR / "kompas_final.csv",
+]
+
+AGNEWS_TRAIN_FINAL_CANDIDATES = [
+    PROCESSED_DATA_DIR / "ag_news_train_clean.csv",
+    PROCESSED_DATA_DIR / "agnews_train_clean.csv",
+    PROCESSED_DATA_DIR / "ag_news_train_final.csv",
+]
+
+AGNEWS_TEST_FINAL_CANDIDATES = [
+    PROCESSED_DATA_DIR / "ag_news_test_clean.csv",
+    PROCESSED_DATA_DIR / "agnews_test_clean.csv",
+    PROCESSED_DATA_DIR / "ag_news_test_final.csv",
+]
+
+
+# =============================================================================
+# OUTPUT FILES
+# =============================================================================
 
 WORD_FREQUENCY_OVERALL_PATH = (
-    TABLES_DIR / "word_frequency_overall.csv"
+    TABLES_DIR
+    / "word_frequency_overall.csv"
 )
 
 WORD_FREQUENCY_BY_CATEGORY_PATH = (
-    TABLES_DIR / "word_frequency_by_category.csv"
+    TABLES_DIR
+    / "word_frequency_by_category.csv"
+)
+
+WORD_FREQUENCY_SUMMARY_PATH = (
+    TABLES_DIR
+    / "word_frequency_summary.csv"
 )
 
 KOMPAS_WORD_FREQUENCY_FIGURE = (
-    FIGURES_DIR / "kompas_top_words.png"
+    FIGURES_DIR
+    / "kompas_top_words.png"
 )
 
 AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE = (
-    FIGURES_DIR / "agnews_train_top_words.png"
+    FIGURES_DIR
+    / "agnews_train_top_words.png"
 )
 
 AGNEWS_TEST_WORD_FREQUENCY_FIGURE = (
-    FIGURES_DIR / "agnews_test_top_words.png"
+    FIGURES_DIR
+    / "agnews_test_top_words.png"
 )
 
 
-# ============================================================
-# STOPWORD DASAR
-# ============================================================
+# =============================================================================
+# EXPECTED FINAL DATASET COUNTS
+# =============================================================================
+
+EXPECTED_FINAL_COUNTS = {
+    "kompas": 9_997,
+    "ag_news_train": 119_817,
+    "ag_news_test": 7_600,
+}
+
+VALIDATE_EXPECTED_FINAL_COUNTS = True
+
+
+# =============================================================================
+# REQUIRED COLUMNS
+# =============================================================================
+
+REQUIRED_COLUMNS = {
+    "document_id",
+    "category",
+    "title",
+    "description",
+}
+
+
+# =============================================================================
+# ANALYSIS CONFIGURATION
+# =============================================================================
+
+TEXT_COLUMNS = [
+    "title",
+    "description",
+]
+
+TOP_N_TABLE = 100
+TOP_N_CATEGORY = 50
+TOP_N_FIGURE = 20
+
+MINIMUM_TOKEN_LENGTH = 3
+
+
+# =============================================================================
+# STOPWORDS INDONESIA
+# =============================================================================
 
 INDONESIAN_STOPWORDS = {
     "yang",
@@ -104,11 +196,6 @@ INDONESIAN_STOPWORDS = {
     "nya",
     "pun",
     "per",
-    "kompas",
-    "com",
-}
-
-INDONESIAN_STOPWORDS.update({
     "jadi",
     "tak",
     "baru",
@@ -121,7 +208,25 @@ INDONESIAN_STOPWORDS.update({
     "kata",
     "ungkap",
     "tahun",
-})
+    "hari",
+    "tersebut",
+    "terkait",
+    "menurut",
+    "namun",
+    "agar",
+    "jika",
+    "maka",
+    "salah",
+    "satu",
+    "kompas",
+    "kompascom",
+    "com",
+}
+
+
+# =============================================================================
+# STOPWORDS INGGRIS
+# =============================================================================
 
 ENGLISH_STOPWORDS = {
     "the",
@@ -159,7 +264,6 @@ ENGLISH_STOPWORDS = {
     "they",
     "we",
     "you",
-    "i",
     "his",
     "her",
     "their",
@@ -190,17 +294,36 @@ ENGLISH_STOPWORDS = {
     "new",
     "says",
     "said",
-    "reuters",
-    "ap",
-    "afp",
-}
-
-ENGLISH_STOPWORDS.update({
     "two",
     "first",
     "year",
+    "years",
     "more",
     "one",
+    "last",
+    "today",
+    "yesterday",
+    "tomorrow",
+    "who",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "also",
+    "some",
+    "other",
+    "all",
+    "any",
+    "now",
+    "only",
+    "most",
+    "much",
+    "many",
+    "reuters",
+    "ap",
+    "afp",
+    "quot",
     "monday",
     "tuesday",
     "wednesday",
@@ -208,186 +331,553 @@ ENGLISH_STOPWORDS.update({
     "friday",
     "saturday",
     "sunday",
-    "last",
-    "yesterday",
-    "today",
-    "tomorrow",
-    "who",
-    "quot",
-})
+}
 
 
-# ============================================================
-# MEMBACA DATASET
-# ============================================================
+# =============================================================================
+# REGEX
+# =============================================================================
 
-def load_dataset(
+URL_PATTERN = re.compile(
+    r"https?://\S+|www\.\S+",
+    flags=re.IGNORECASE,
+)
+
+HTML_TAG_PATTERN = re.compile(
+    r"<[^>]+>"
+)
+
+WHITESPACE_PATTERN = re.compile(
+    r"\s+"
+)
+
+# Mengambil rangkaian karakter huruf Unicode.
+# Angka dan underscore tidak disertakan.
+LETTER_TOKEN_PATTERN = re.compile(
+    r"[^\W\d_]+",
+    flags=re.UNICODE,
+)
+
+
+# =============================================================================
+# GENERAL UTILITIES
+# =============================================================================
+
+def ensure_output_directories() -> None:
+    """
+    Memastikan folder tabel dan grafik tersedia.
+    """
+
+    TABLES_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    FIGURES_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+
+def is_valid_file(
     file_path: Path,
+) -> bool:
+    """
+    Memeriksa apakah path merupakan file valid dan tidak kosong.
+    """
+
+    path = Path(file_path)
+
+    return (
+        path.exists()
+        and path.is_file()
+        and path.stat().st_size > 0
+    )
+
+
+def resolve_first_existing_file(
+    candidates: list[Path],
     dataset_name: str,
+) -> Path:
+    """
+    Memilih dataset final pertama yang ditemukan.
+    """
+
+    for candidate in candidates:
+        if is_valid_file(candidate):
+            return candidate
+
+    paths = "\n".join(
+        f"- {candidate}"
+        for candidate in candidates
+    )
+
+    raise FileNotFoundError(
+        f"Dataset final {dataset_name} tidak ditemukan.\n\n"
+        f"Path yang diperiksa:\n{paths}\n\n"
+        "Pastikan tahap cleaning telah dijalankan."
+    )
+
+
+def read_csv_with_fallback(
+    file_path: Path,
 ) -> pd.DataFrame:
     """
-    Membaca dataset processed.
+    Membaca CSV menggunakan beberapa encoding.
+    """
+
+    last_error: Exception | None = None
+
+    for encoding in [
+        "utf-8-sig",
+        "utf-8",
+        "latin-1",
+    ]:
+        try:
+            return pd.read_csv(
+                file_path,
+                encoding=encoding,
+            )
+
+        except UnicodeDecodeError as error:
+            last_error = error
+
+        except Exception as error:
+            last_error = error
+            break
+
+    if last_error is not None:
+        raise last_error
+
+    return pd.DataFrame()
+
+
+def validate_required_columns(
+    dataframe: pd.DataFrame,
+    dataset_name: str,
+) -> None:
+    """
+    Memastikan dataset mempunyai kolom yang dibutuhkan.
+    """
+
+    missing_columns = (
+        REQUIRED_COLUMNS
+        - set(dataframe.columns)
+    )
+
+    if missing_columns:
+        raise KeyError(
+            f"Dataset {dataset_name} tidak memiliki "
+            "kolom yang dibutuhkan.\n"
+            f"Kolom hilang: {sorted(missing_columns)}"
+        )
+
+
+def validate_dataset_count(
+    dataframe: pd.DataFrame,
+    dataset_key: str,
+) -> None:
+    """
+    Memastikan jumlah dataset sesuai hasil cleaning final.
+    """
+
+    if not VALIDATE_EXPECTED_FINAL_COUNTS:
+        return
+
+    expected_count = EXPECTED_FINAL_COUNTS[
+        dataset_key
+    ]
+
+    actual_count = int(
+        len(dataframe)
+    )
+
+    if actual_count != expected_count:
+        raise ValueError(
+            f"Jumlah dataset final {dataset_key} tidak sesuai.\n"
+            f"Expected : {expected_count:,}\n"
+            f"Actual   : {actual_count:,}\n\n"
+            "Pastikan file yang digunakan adalah dataset "
+            "setelah cleaning."
+        )
+
+
+def validate_output_file(
+    file_path: Path,
+    description: str,
+) -> None:
+    """
+    Memastikan output berhasil dibuat.
     """
 
     if not file_path.exists():
         raise FileNotFoundError(
-            f"Dataset {dataset_name} tidak ditemukan:\n"
+            f"Output {description} tidak berhasil dibuat:\n"
             f"{file_path}"
         )
 
-    dataframe = pd.read_csv(
-        file_path,
-        encoding="utf-8-sig",
+    if file_path.stat().st_size <= 0:
+        raise ValueError(
+            f"Output {description} kosong:\n"
+            f"{file_path}"
+        )
+
+
+# =============================================================================
+# DATASET LOADER
+# =============================================================================
+
+def load_dataset(
+    file_path: Path,
+    dataset_name: str,
+    dataset_key: str,
+) -> pd.DataFrame:
+    """
+    Membaca dan memvalidasi dataset final.
+    """
+
+    path = Path(file_path)
+
+    if not is_valid_file(path):
+        raise FileNotFoundError(
+            f"Dataset {dataset_name} tidak ditemukan "
+            f"atau kosong:\n{path}"
+        )
+
+    dataframe = read_csv_with_fallback(
+        path
     )
 
     if dataframe.empty:
         raise ValueError(
-            f"Dataset {dataset_name} kosong."
+            f"Dataset {dataset_name} tidak mempunyai baris data."
         )
+
+    dataframe.columns = [
+        str(column).strip()
+        for column in dataframe.columns
+    ]
+
+    validate_required_columns(
+        dataframe=dataframe,
+        dataset_name=dataset_name,
+    )
+
+    validate_dataset_count(
+        dataframe=dataframe,
+        dataset_key=dataset_key,
+    )
 
     return dataframe
 
 
-# ============================================================
-# NORMALISASI TEKS UNTUK FREKUENSI KATA
-# ============================================================
+# =============================================================================
+# TEXT NORMALIZATION AND TOKENIZATION
+# =============================================================================
 
-def tokenize_text(
-    text: str,
-    stopwords: set[str],
-) -> list[str]:
+def normalize_text_for_frequency(
+    value: Any,
+) -> str:
     """
-    Mengubah teks menjadi token sederhana.
+    Menormalisasi teks khusus untuk EDA frekuensi kata.
 
-    Tahap:
-    - lowercase;
-    - menghapus URL;
-    - mengambil token alfabet;
-    - menghapus stopword;
-    - menghapus token dengan panjang kurang dari 3 karakter.
-
-    Proses ini hanya untuk analisis EDA.
-    Dataset asli tidak diubah.
+    Proses ini tidak mengubah dataset asli dan tidak digunakan
+    sebagai input langsung model.
     """
 
-    text = str(text).lower()
+    if value is None:
+        return ""
 
-    text = re.sub(
-        r"https?://\S+|www\.\S+",
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+
+    text = unicodedata.normalize(
+        "NFKC",
+        str(value),
+    )
+
+    text = text.casefold()
+
+    text = HTML_TAG_PATTERN.sub(
         " ",
         text,
     )
 
-    tokens = re.findall(
-        r"[a-zA-ZÀ-ÿ]+",
+    text = URL_PATTERN.sub(
+        " ",
         text,
+    )
+
+    text = WHITESPACE_PATTERN.sub(
+        " ",
+        text,
+    )
+
+    return text.strip()
+
+
+def tokenize_text(
+    value: Any,
+    stopwords: set[str],
+) -> list[str]:
+    """
+    Mengubah teks menjadi token untuk analisis frekuensi.
+
+    Token yang dipertahankan:
+    - hanya karakter alfabet;
+    - panjang minimal tiga karakter;
+    - bukan stopword.
+    """
+
+    text = normalize_text_for_frequency(
+        value
+    )
+
+    tokens = LETTER_TOKEN_PATTERN.findall(
+        text
     )
 
     filtered_tokens = [
         token
         for token in tokens
         if (
-            token not in stopwords
-            and len(token) >= 3
+            len(token) >= MINIMUM_TOKEN_LENGTH
+            and token not in stopwords
         )
     ]
 
     return filtered_tokens
 
 
-# ============================================================
-# MENGGABUNGKAN KOLOM TEKS
-# ============================================================
+# =============================================================================
+# COMBINE TEXT FIELDS
+# =============================================================================
 
 def combine_text_columns(
     dataframe: pd.DataFrame,
     text_columns: list[str],
 ) -> pd.Series:
     """
-    Menggabungkan beberapa kolom teks menjadi satu Series.
+    Menggabungkan Title dan Description.
+
+    Content tidak digunakan agar frekuensi tidak didominasi
+    artikel yang jauh lebih panjang.
     """
 
-    combined = pd.Series(
+    missing_columns = [
+        column
+        for column in text_columns
+        if column not in dataframe.columns
+    ]
+
+    if missing_columns:
+        raise KeyError(
+            "Kolom teks tidak ditemukan: "
+            f"{missing_columns}"
+        )
+
+    result = pd.Series(
         "",
         index=dataframe.index,
-        dtype="string",
+        dtype="object",
     )
 
     for column in text_columns:
-        if column not in dataframe.columns:
-            raise ValueError(
-                f"Kolom '{column}' tidak tersedia."
-            )
-
-        combined = (
-            combined.fillna("")
-            + " "
-            + dataframe[column]
+        values = (
+            dataframe[column]
             .fillna("")
             .astype(str)
         )
 
-    return combined.str.strip()
+        result = (
+            result
+            + " "
+            + values
+        )
+
+    return (
+        result
+        .str.strip()
+    )
 
 
-# ============================================================
-# MENGHITUNG FREKUENSI KATA
-# ============================================================
+# =============================================================================
+# WORD FREQUENCY CALCULATION
+# =============================================================================
 
 def calculate_word_frequency(
     texts: pd.Series,
     stopwords: set[str],
-    top_n: int = 20,
-) -> pd.DataFrame:
+    top_n: int,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
-    Menghitung frekuensi kata teratas.
+    Menghitung:
+
+    - jumlah kemunculan token;
+    - persentase terhadap seluruh token;
+    - jumlah dokumen yang mengandung token;
+    - persentase dokumen yang mengandung token.
     """
 
-    counter: Counter[str] = Counter()
+    token_counter: Counter[str] = Counter()
+    document_counter: Counter[str] = Counter()
+
+    total_documents = int(
+        len(texts)
+    )
+
+    total_tokens = 0
+    empty_token_documents = 0
 
     for text in texts:
         tokens = tokenize_text(
-            text=text,
+            value=text,
             stopwords=stopwords,
         )
 
-        counter.update(tokens)
+        if not tokens:
+            empty_token_documents += 1
+            continue
+
+        token_counter.update(
+            tokens
+        )
+
+        document_counter.update(
+            set(tokens)
+        )
+
+        total_tokens += len(tokens)
+
+    records: list[dict[str, Any]] = []
+
+    for rank, (
+        word,
+        frequency,
+    ) in enumerate(
+        token_counter.most_common(
+            top_n
+        ),
+        start=1,
+    ):
+        document_frequency = int(
+            document_counter[word]
+        )
+
+        records.append(
+            {
+                "rank":
+                    rank,
+
+                "word":
+                    word,
+
+                "frequency":
+                    int(
+                        frequency
+                    ),
+
+                "relative_frequency_percent":
+                    round(
+                        frequency
+                        / total_tokens
+                        * 100,
+                        6,
+                    )
+                    if total_tokens > 0
+                    else 0.0,
+
+                "document_frequency":
+                    document_frequency,
+
+                "document_percentage":
+                    round(
+                        document_frequency
+                        / total_documents
+                        * 100,
+                        6,
+                    )
+                    if total_documents > 0
+                    else 0.0,
+            }
+        )
 
     frequency = pd.DataFrame(
-        counter.most_common(top_n),
+        records,
         columns=[
+            "rank",
             "word",
             "frequency",
+            "relative_frequency_percent",
+            "document_frequency",
+            "document_percentage",
         ],
     )
 
-    return frequency
+    summary = {
+        "jumlah_dokumen":
+            total_documents,
+
+        "total_token_setelah_filter":
+            int(
+                total_tokens
+            ),
+
+        "jumlah_token_unik":
+            int(
+                len(token_counter)
+            ),
+
+        "rata_rata_token_per_dokumen":
+            round(
+                total_tokens
+                / total_documents,
+                4,
+            )
+            if total_documents > 0
+            else 0.0,
+
+        "dokumen_tanpa_token_setelah_filter":
+            int(
+                empty_token_documents
+            ),
+    }
+
+    return (
+        frequency,
+        summary,
+    )
 
 
-# ============================================================
-# FREKUENSI KATA KESELURUHAN
-# ============================================================
+# =============================================================================
+# OVERALL FREQUENCY
+# =============================================================================
 
 def create_overall_frequency(
     dataframe: pd.DataFrame,
     dataset_name: str,
     text_columns: list[str],
     stopwords: set[str],
-    top_n: int = 20,
-) -> pd.DataFrame:
+    top_n: int,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
-    Menghasilkan tabel frekuensi kata seluruh dataset.
+    Menghasilkan frekuensi kata keseluruhan dataset.
     """
 
     combined_text = combine_text_columns(
-        dataframe,
-        text_columns,
+        dataframe=dataframe,
+        text_columns=text_columns,
     )
 
-    frequency = calculate_word_frequency(
-        combined_text,
-        stopwords,
-        top_n,
+    frequency, summary = (
+        calculate_word_frequency(
+            texts=combined_text,
+            stopwords=stopwords,
+            top_n=top_n,
+        )
     )
 
     frequency.insert(
@@ -398,49 +888,75 @@ def create_overall_frequency(
 
     frequency.insert(
         1,
-        "text_source",
-        " + ".join(text_columns),
+        "category",
+        "all",
     )
 
     frequency.insert(
         2,
-        "rank",
-        range(1, len(frequency) + 1),
+        "text_source",
+        " + ".join(text_columns),
     )
 
-    return frequency
+    summary_record = {
+        "dataset":
+            dataset_name,
+
+        "category":
+            "all",
+
+        "text_source":
+            " + ".join(text_columns),
+
+        **summary,
+    }
+
+    return (
+        frequency,
+        summary_record,
+    )
 
 
-# ============================================================
-# FREKUENSI KATA PER KATEGORI
-# ============================================================
+# =============================================================================
+# FREQUENCY BY CATEGORY
+# =============================================================================
 
 def create_frequency_by_category(
     dataframe: pd.DataFrame,
     dataset_name: str,
     text_columns: list[str],
     stopwords: set[str],
-    top_n: int = 20,
-) -> pd.DataFrame:
+    top_n: int,
+) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """
-    Menghasilkan tabel frekuensi kata per kategori.
+    Menghasilkan frekuensi kata pada setiap kategori.
     """
 
-    records: list[pd.DataFrame] = []
+    frequency_frames: list[pd.DataFrame] = []
+    summary_records: list[dict[str, Any]] = []
 
-    for category, group in dataframe.groupby(
+    grouped = dataframe.groupby(
         "category",
         dropna=False,
-    ):
-        combined_text = combine_text_columns(
-            group,
-            text_columns,
+        sort=True,
+    )
+
+    for category, group in grouped:
+        category_name = str(
+            category
         )
 
-        frequency = calculate_word_frequency(
-            combined_text,
-            stopwords,
-            top_n,
+        combined_text = combine_text_columns(
+            dataframe=group,
+            text_columns=text_columns,
+        )
+
+        frequency, summary = (
+            calculate_word_frequency(
+                texts=combined_text,
+                stopwords=stopwords,
+                top_n=top_n,
+            )
         )
 
         frequency.insert(
@@ -452,7 +968,7 @@ def create_frequency_by_category(
         frequency.insert(
             1,
             "category",
-            category,
+            category_name,
         )
 
         frequency.insert(
@@ -461,35 +977,71 @@ def create_frequency_by_category(
             " + ".join(text_columns),
         )
 
-        frequency.insert(
-            3,
-            "rank",
-            range(1, len(frequency) + 1),
+        frequency_frames.append(
+            frequency
         )
 
-        records.append(frequency)
+        summary_records.append(
+            {
+                "dataset":
+                    dataset_name,
 
-    return pd.concat(
-        records,
-        ignore_index=True,
+                "category":
+                    category_name,
+
+                "text_source":
+                    " + ".join(text_columns),
+
+                **summary,
+            }
+        )
+
+    if not frequency_frames:
+        return (
+            pd.DataFrame(),
+            summary_records,
+        )
+
+    return (
+        pd.concat(
+            frequency_frames,
+            ignore_index=True,
+        ),
+        summary_records,
     )
 
 
-# ============================================================
-# MENAMPILKAN HASIL
-# ============================================================
+# =============================================================================
+# TERMINAL DISPLAY
+# =============================================================================
 
 def display_top_words(
     frequency: pd.DataFrame,
     dataset_name: str,
+    top_n: int = 20,
 ) -> None:
     """
     Menampilkan kata teratas di terminal.
     """
 
-    print("\n" + "=" * 72)
-    print(f"TOP WORDS - {dataset_name.upper()}")
-    print("=" * 72)
+    print(
+        "\n"
+        + "=" * 80
+    )
+
+    print(
+        f"TOP WORDS — {dataset_name.upper()}"
+    )
+
+    print(
+        "=" * 80
+    )
+
+    if frequency.empty:
+        print(
+            "Data frekuensi kata kosong."
+        )
+        return
 
     print(
         frequency[
@@ -497,26 +1049,42 @@ def display_top_words(
                 "rank",
                 "word",
                 "frequency",
+                "relative_frequency_percent",
+                "document_frequency",
+                "document_percentage",
             ]
-        ].to_string(index=False)
+        ]
+        .head(
+            top_n
+        )
+        .to_string(
+            index=False
+        )
     )
 
 
-# ============================================================
-# MEMBUAT GRAFIK TOP WORDS
-# ============================================================
+# =============================================================================
+# TOP-WORD FIGURE
+# =============================================================================
 
 def plot_top_words(
     frequency: pd.DataFrame,
     title: str,
     output_path: Path,
+    top_n: int = 20,
 ) -> None:
     """
-    Membuat horizontal bar chart kata teratas.
+    Membuat horizontal bar chart token teratas.
     """
+
+    if frequency.empty:
+        raise ValueError(
+            f"Data frekuensi kosong untuk grafik {title}."
+        )
 
     plot_data = (
         frequency
+        .head(top_n)
         .sort_values(
             "frequency",
             ascending=True,
@@ -524,136 +1092,230 @@ def plot_top_words(
         .copy()
     )
 
-    fig, ax = plt.subplots(
-        figsize=(10, 8)
+    figure, axis = plt.subplots(
+        figsize=(
+            11,
+            8,
+        )
     )
 
-    bars = ax.barh(
+    bars = axis.barh(
         plot_data["word"],
         plot_data["frequency"],
     )
 
-    ax.set_title(
+    axis.set_title(
         title,
         fontsize=14,
         pad=15,
     )
 
-    ax.set_xlabel(
-        "Frekuensi",
+    axis.set_xlabel(
+        "Frekuensi Kemunculan",
         fontsize=11,
     )
 
-    ax.set_ylabel(
-        "Kata",
+    axis.set_ylabel(
+        "Token",
         fontsize=11,
     )
 
-    ax.grid(
+    axis.grid(
         axis="x",
         linestyle="--",
         alpha=0.3,
+    )
+
+    axis.set_axisbelow(
+        True
+    )
+
+    maximum_value = int(
+        plot_data["frequency"].max()
+    )
+
+    axis.set_xlim(
+        0,
+        max(
+            1,
+            int(
+                maximum_value
+                * 1.16
+            ),
+        ),
     )
 
     for bar, value in zip(
         bars,
         plot_data["frequency"],
     ):
-        ax.text(
-            value,
-            bar.get_y() + bar.get_height() / 2,
-            f" {value:,}",
+        axis.text(
+            float(value)
+            + maximum_value
+            * 0.01,
+            bar.get_y()
+            + bar.get_height()
+            / 2,
+            f"{int(value):,}",
             va="center",
             fontsize=9,
         )
 
     plt.tight_layout()
 
-    fig.savefig(
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    figure.savefig(
         output_path,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close(fig)
+    plt.close(
+        figure
+    )
 
 
-# ============================================================
-# PROGRAM UTAMA
-# ============================================================
+# =============================================================================
+# MAIN PROGRAM
+# =============================================================================
 
 def main() -> None:
     """
-    Menjalankan analisis frekuensi kata.
+    Menjalankan EDA tahap 3.4:
+
+    - frekuensi kata keseluruhan;
+    - frekuensi kata per kategori;
+    - document frequency;
+    - ringkasan token;
+    - grafik 20 token teratas.
     """
 
-    print("=" * 72)
-    print("STEP 3.4 - WORD FREQUENCY ANALYSIS")
-    print("=" * 72)
+    print(
+        "=" * 80
+    )
 
-    # ========================================================
-    # MEMUAT DATASET
-    # ========================================================
+    print(
+        "STEP 3.4 - WORD FREQUENCY ANALYSIS"
+    )
+
+    print(
+        "=" * 80
+    )
+
+    ensure_output_directories()
+
+    # =========================================================================
+    # RESOLVE FINAL DATASET PATHS
+    # =========================================================================
+
+    kompas_path = resolve_first_existing_file(
+        candidates=KOMPAS_FINAL_CANDIDATES,
+        dataset_name="Kompas",
+    )
+
+    agnews_train_path = resolve_first_existing_file(
+        candidates=AGNEWS_TRAIN_FINAL_CANDIDATES,
+        dataset_name="AG News Train",
+    )
+
+    agnews_test_path = resolve_first_existing_file(
+        candidates=AGNEWS_TEST_FINAL_CANDIDATES,
+        dataset_name="AG News Test",
+    )
+
+    print(
+        "\nDataset final yang digunakan:"
+    )
+
+    print(
+        f"Kompas        : {kompas_path}"
+    )
+
+    print(
+        f"AG News Train : {agnews_train_path}"
+    )
+
+    print(
+        f"AG News Test  : {agnews_test_path}"
+    )
+
+    # =========================================================================
+    # LOAD FINAL DATASETS
+    # =========================================================================
 
     kompas = load_dataset(
-        KOMPAS_PROCESSED_PATH,
-        "Kompas",
+        file_path=kompas_path,
+        dataset_name="Kompas",
+        dataset_key="kompas",
     )
 
     agnews_train = load_dataset(
-        AG_NEWS_TRAIN_PROCESSED_PATH,
-        "AG News Train",
+        file_path=agnews_train_path,
+        dataset_name="AG News Train",
+        dataset_key="ag_news_train",
     )
 
     agnews_test = load_dataset(
-        AG_NEWS_TEST_PROCESSED_PATH,
-        "AG News Test",
+        file_path=agnews_test_path,
+        dataset_name="AG News Test",
+        dataset_key="ag_news_test",
     )
 
-    # ========================================================
-    # KOLOM YANG DIGUNAKAN
-    # ========================================================
+    print(
+        "\nDataset berhasil dimuat:"
+    )
 
-    kompas_text_columns = [
-        "title",
-        "description",
-    ]
+    print(
+        f"Kompas        : {len(kompas):,}"
+    )
 
-    agnews_text_columns = [
-        "title",
-        "description",
-    ]
+    print(
+        f"AG News Train : {len(agnews_train):,}"
+    )
 
-    # Content Kompas belum dimasukkan agar hasil frekuensi
-    # tidak didominasi artikel yang sangat panjang.
-    # Analisis content dapat dibuat terpisah bila dibutuhkan.
+    print(
+        f"AG News Test  : {len(agnews_test):,}"
+    )
 
-    # ========================================================
-    # FREKUENSI KESELURUHAN
-    # ========================================================
+    # =========================================================================
+    # OVERALL WORD FREQUENCY
+    # =========================================================================
 
-    kompas_overall = create_overall_frequency(
+    (
+        kompas_overall,
+        kompas_summary,
+    ) = create_overall_frequency(
         dataframe=kompas,
         dataset_name="kompas",
-        text_columns=kompas_text_columns,
+        text_columns=TEXT_COLUMNS,
         stopwords=INDONESIAN_STOPWORDS,
-        top_n=20,
+        top_n=TOP_N_TABLE,
     )
 
-    agnews_train_overall = create_overall_frequency(
+    (
+        agnews_train_overall,
+        agnews_train_summary,
+    ) = create_overall_frequency(
         dataframe=agnews_train,
         dataset_name="ag_news_train",
-        text_columns=agnews_text_columns,
+        text_columns=TEXT_COLUMNS,
         stopwords=ENGLISH_STOPWORDS,
-        top_n=20,
+        top_n=TOP_N_TABLE,
     )
 
-    agnews_test_overall = create_overall_frequency(
+    (
+        agnews_test_overall,
+        agnews_test_summary,
+    ) = create_overall_frequency(
         dataframe=agnews_test,
         dataset_name="ag_news_test",
-        text_columns=agnews_text_columns,
+        text_columns=TEXT_COLUMNS,
         stopwords=ENGLISH_STOPWORDS,
-        top_n=20,
+        top_n=TOP_N_TABLE,
     )
 
     overall_frequency = pd.concat(
@@ -671,36 +1333,41 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    # ========================================================
-    # FREKUENSI PER KATEGORI
-    # ========================================================
+    # =========================================================================
+    # WORD FREQUENCY BY CATEGORY
+    # =========================================================================
 
-    kompas_by_category = create_frequency_by_category(
+    (
+        kompas_by_category,
+        kompas_category_summary,
+    ) = create_frequency_by_category(
         dataframe=kompas,
         dataset_name="kompas",
-        text_columns=kompas_text_columns,
+        text_columns=TEXT_COLUMNS,
         stopwords=INDONESIAN_STOPWORDS,
-        top_n=20,
+        top_n=TOP_N_CATEGORY,
     )
 
-    agnews_train_by_category = (
-        create_frequency_by_category(
-            dataframe=agnews_train,
-            dataset_name="ag_news_train",
-            text_columns=agnews_text_columns,
-            stopwords=ENGLISH_STOPWORDS,
-            top_n=20,
-        )
+    (
+        agnews_train_by_category,
+        agnews_train_category_summary,
+    ) = create_frequency_by_category(
+        dataframe=agnews_train,
+        dataset_name="ag_news_train",
+        text_columns=TEXT_COLUMNS,
+        stopwords=ENGLISH_STOPWORDS,
+        top_n=TOP_N_CATEGORY,
     )
 
-    agnews_test_by_category = (
-        create_frequency_by_category(
-            dataframe=agnews_test,
-            dataset_name="ag_news_test",
-            text_columns=agnews_text_columns,
-            stopwords=ENGLISH_STOPWORDS,
-            top_n=20,
-        )
+    (
+        agnews_test_by_category,
+        agnews_test_category_summary,
+    ) = create_frequency_by_category(
+        dataframe=agnews_test,
+        dataset_name="ag_news_test",
+        text_columns=TEXT_COLUMNS,
+        stopwords=ENGLISH_STOPWORDS,
+        top_n=TOP_N_CATEGORY,
     )
 
     frequency_by_category = pd.concat(
@@ -718,84 +1385,244 @@ def main() -> None:
         encoding="utf-8-sig",
     )
 
-    # ========================================================
-    # MENAMPILKAN HASIL
-    # ========================================================
+    # =========================================================================
+    # WORD-FREQUENCY SUMMARY
+    # =========================================================================
+
+    summary_records = [
+        kompas_summary,
+        agnews_train_summary,
+        agnews_test_summary,
+        *kompas_category_summary,
+        *agnews_train_category_summary,
+        *agnews_test_category_summary,
+    ]
+
+    frequency_summary = pd.DataFrame(
+        summary_records
+    )
+
+    frequency_summary.to_csv(
+        WORD_FREQUENCY_SUMMARY_PATH,
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # =========================================================================
+    # TERMINAL DISPLAY
+    # =========================================================================
 
     display_top_words(
-        kompas_overall,
-        "Kompas",
+        frequency=kompas_overall,
+        dataset_name="Kompas",
+        top_n=TOP_N_FIGURE,
     )
 
     display_top_words(
-        agnews_train_overall,
-        "AG News Train",
+        frequency=agnews_train_overall,
+        dataset_name="AG News Train",
+        top_n=TOP_N_FIGURE,
     )
 
     display_top_words(
-        agnews_test_overall,
-        "AG News Test",
+        frequency=agnews_test_overall,
+        dataset_name="AG News Test",
+        top_n=TOP_N_FIGURE,
     )
 
-    # ========================================================
-    # MEMBUAT GRAFIK
-    # ========================================================
+    # =========================================================================
+    # FIGURES
+    # =========================================================================
 
     plot_top_words(
         frequency=kompas_overall,
         title=(
-            "20 Kata Paling Sering Muncul "
-            "pada Dataset Kompas"
+            "20 Token Paling Sering Muncul "
+            "pada Title dan Description Kompas"
         ),
         output_path=KOMPAS_WORD_FREQUENCY_FIGURE,
+        top_n=TOP_N_FIGURE,
     )
 
     plot_top_words(
         frequency=agnews_train_overall,
         title=(
-            "20 Kata Paling Sering Muncul "
-            "pada AG News Train"
+            "20 Token Paling Sering Muncul "
+            "pada Title dan Description AG News Train"
         ),
-        output_path=(
-            AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE
-        ),
+        output_path=AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE,
+        top_n=TOP_N_FIGURE,
     )
 
     plot_top_words(
         frequency=agnews_test_overall,
         title=(
-            "20 Kata Paling Sering Muncul "
-            "pada AG News Test"
+            "20 Token Paling Sering Muncul "
+            "pada Title dan Description AG News Test"
         ),
-        output_path=(
-            AGNEWS_TEST_WORD_FREQUENCY_FIGURE
-        ),
+        output_path=AGNEWS_TEST_WORD_FREQUENCY_FIGURE,
+        top_n=TOP_N_FIGURE,
     )
 
-    # ========================================================
-    # INFORMASI OUTPUT
-    # ========================================================
+    # =========================================================================
+    # OUTPUT VALIDATION
+    # =========================================================================
 
-    print("\n" + "=" * 72)
-    print("OUTPUT WORD FREQUENCY ANALYSIS")
-    print("=" * 72)
+    output_files = [
+        (
+            WORD_FREQUENCY_OVERALL_PATH,
+            "frekuensi kata keseluruhan",
+        ),
+        (
+            WORD_FREQUENCY_BY_CATEGORY_PATH,
+            "frekuensi kata per kategori",
+        ),
+        (
+            WORD_FREQUENCY_SUMMARY_PATH,
+            "ringkasan frekuensi kata",
+        ),
+        (
+            KOMPAS_WORD_FREQUENCY_FIGURE,
+            "grafik frekuensi kata Kompas",
+        ),
+        (
+            AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE,
+            "grafik frekuensi kata AG News Train",
+        ),
+        (
+            AGNEWS_TEST_WORD_FREQUENCY_FIGURE,
+            "grafik frekuensi kata AG News Test",
+        ),
+    ]
 
-    print("\nFrekuensi kata keseluruhan:")
-    print(WORD_FREQUENCY_OVERALL_PATH)
+    for file_path, description in output_files:
+        validate_output_file(
+            file_path=file_path,
+            description=description,
+        )
 
-    print("\nFrekuensi kata per kategori:")
-    print(WORD_FREQUENCY_BY_CATEGORY_PATH)
+    # =========================================================================
+    # OUTPUT INFORMATION
+    # =========================================================================
 
-    print("\nGrafik Kompas:")
-    print(KOMPAS_WORD_FREQUENCY_FIGURE)
+    print(
+        "\n"
+        + "=" * 80
+    )
 
-    print("\nGrafik AG News train:")
-    print(AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE)
+    print(
+        "OUTPUT WORD FREQUENCY ANALYSIS"
+    )
 
-    print("\nGrafik AG News test:")
-    print(AGNEWS_TEST_WORD_FREQUENCY_FIGURE)
+    print(
+        "=" * 80
+    )
 
-    print("\nTahap word frequency analysis selesai.")
+    print(
+        "\nFrekuensi kata keseluruhan:"
+    )
+
+    print(
+        WORD_FREQUENCY_OVERALL_PATH
+    )
+
+    print(
+        "\nFrekuensi kata per kategori:"
+    )
+
+    print(
+        WORD_FREQUENCY_BY_CATEGORY_PATH
+    )
+
+    print(
+        "\nRingkasan frekuensi kata:"
+    )
+
+    print(
+        WORD_FREQUENCY_SUMMARY_PATH
+    )
+
+    print(
+        "\nGrafik Kompas:"
+    )
+
+    print(
+        KOMPAS_WORD_FREQUENCY_FIGURE
+    )
+
+    print(
+        "\nGrafik AG News Train:"
+    )
+
+    print(
+        AGNEWS_TRAIN_WORD_FREQUENCY_FIGURE
+    )
+
+    print(
+        "\nGrafik AG News Test:"
+    )
+
+    print(
+        AGNEWS_TEST_WORD_FREQUENCY_FIGURE
+    )
+
+    print(
+        "\nRingkasan token keseluruhan:"
+    )
+
+    overall_summary = frequency_summary[
+        frequency_summary["category"].eq(
+            "all"
+        )
+    ]
+
+    print(
+        overall_summary[
+            [
+                "dataset",
+                "jumlah_dokumen",
+                "total_token_setelah_filter",
+                "jumlah_token_unik",
+                "rata_rata_token_per_dokumen",
+                "dokumen_tanpa_token_setelah_filter",
+            ]
+        ].to_string(
+            index=False
+        )
+    )
+
+    print(
+        "\nCatatan:"
+    )
+
+    print(
+        "- Analisis menggunakan gabungan Title dan Description."
+    )
+
+    print(
+        "- Content Kompas tidak digunakan karena jauh lebih panjang."
+    )
+
+    print(
+        "- Stopword removal hanya digunakan untuk EDA frekuensi kata."
+    )
+
+    print(
+        "- Frekuensi kata bukan nilai feature importance model."
+    )
+
+    print(
+        "\n"
+        + "=" * 80
+    )
+
+    print(
+        "Tahap word frequency analysis selesai."
+    )
+
+    print(
+        "=" * 80
+    )
 
 
 if __name__ == "__main__":

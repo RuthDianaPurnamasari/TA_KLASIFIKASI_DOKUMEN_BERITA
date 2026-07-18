@@ -1,18 +1,18 @@
 {
-    "generated_at": "2026-07-14T13:17:59",
+    "generated_at": "2026-07-17T07:17:19",
     "evaluation_split": "test",
     "total_experiments": 10,
     "success": 10,
     "failed": 0,
-    "total_duration_seconds": 33.208516,
-    "total_duration_minutes": 0.553475,
+    "total_duration_seconds": 42.33856,
+    "total_duration_minutes": 0.705643,
     "best_experiment_by_macro_f1": {
         "experiment_name": "cnn_k2",
         "model": "cnn",
         "dataset": "Kompas",
         "scenario_code": "K2",
-        "accuracy": 0.958,
-        "f1_macro": 0.9580683442768239
+        "accuracy": 0.969,
+        "f1_macro": 0.9690358618620193
     },
     "important_note": "Model terbaik dimuat dari checkpoint dengan validation loss terendah. Test set hanya digunakan untuk evaluasi performa final."
 }

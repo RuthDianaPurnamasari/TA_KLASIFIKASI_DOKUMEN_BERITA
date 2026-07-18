@@ -1,4 +1,4 @@
-﻿dataset,jumlah_data,jumlah_kategori,distribusi_kategori,avg_words_title,empty_title,avg_words_description,empty_description,avg_words_content,empty_content
-Kompas,10000,4,bola: 2500; global: 2500; money: 2500; tekno: 2500,10.71,0,17.87,0,330.39,0.0
-AG News Train,120000,4,business: 30000; sci_tech: 30000; sports: 30000; world: 30000,6.78,0,31.06,0,,
-AG News Test,7532,4,business: 1879; sci_tech: 1882; sports: 1887; world: 1884,6.36,0,23.54,831,,
+﻿dataset,dataset_display_name,stage,jumlah_data,jumlah_kategori,distribusi_kategori,empty_title,empty_description,avg_words_title,avg_words_description,avg_words_title_description,coverage_title_max_20_percent,coverage_title_description_max_60_percent,empty_content,avg_words_content,tanggal_awal,tanggal_akhir
+kompas,Kompas,setelah_cleaning,9997,4,bola: 2.500; global: 2.500; money: 2.500; tekno: 2.497,0,0,10.7146,17.8679,28.5825,100.0,100.0,0,330.3673,2026-01-26 09:01:00,2026-05-25 19:24:00
+ag_news_train,AG News Train,setelah_cleaning,119817,4,business: 29.947; sci_tech: 29.917; sports: 29.974; world: 29.979,0,0,6.7841,31.0607,37.8447,100.0,97.5413,,,,
+ag_news_test,AG News Test,setelah_cleaning,7600,4,business: 1.900; sci_tech: 1.900; sports: 1.900; world: 1.900,0,0,6.7578,30.9633,37.7211,100.0,97.75,,,,

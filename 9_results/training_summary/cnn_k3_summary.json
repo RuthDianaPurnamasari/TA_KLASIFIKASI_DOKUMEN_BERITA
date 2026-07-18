@@ -1,27 +1,92 @@
 {
+    "status": "success",
     "experiment_name": "cnn_k3",
     "model": "CNN",
+    "model_code": "cnn",
     "dataset": "Kompas",
     "scenario_code": "K3",
-    "scenario_name": "Title + Description + Keyword",
+    "scenario_name": "Title + Description + Keyword YAKE",
+    "started_at": "2026-07-17T02:47:09",
+    "finished_at": "2026-07-17T02:47:38",
     "jumlah_train": 7997,
     "jumlah_validation": 1000,
-    "vocabulary_size": 15447,
+    "train_label_distribution": {
+        "0": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "1": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "2": {
+            "count": 2000,
+            "percentage": 25.0094
+        },
+        "3": {
+            "count": 1997,
+            "percentage": 24.9719
+        }
+    },
+    "validation_label_distribution": {
+        "0": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "1": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "2": {
+            "count": 250,
+            "percentage": 25.0
+        },
+        "3": {
+            "count": 250,
+            "percentage": 25.0
+        }
+    },
+    "train_validation_document_overlap": 0,
+    "vocabulary_size": 15492,
+    "max_token_id_train": 15491,
+    "max_token_id_validation": 15488,
     "max_sequence_length": 60,
     "num_classes": 4,
+    "embedding_dim": 128,
+    "num_filters": 128,
+    "kernel_size": 5,
+    "dense_units": 128,
+    "spatial_dropout_rate": 0.2,
+    "dropout_rate": 0.5,
     "epochs_maximum": 20,
-    "epochs_completed": 5,
+    "epochs_completed": 7,
     "batch_size": 64,
     "learning_rate_initial": 0.001,
-    "training_time_seconds": 30.2505,
-    "training_time_minutes": 0.5042,
+    "random_seed": 42,
+    "monitor": "val_loss",
+    "selection_mode": "min",
+    "training_time_seconds": 27.6883,
+    "training_time_minutes": 0.4615,
     "best_epoch": 2,
-    "best_train_loss": 0.13505952060222626,
-    "best_validation_loss": 0.19058667123317719,
-    "best_train_accuracy": 0.9612354636192322,
-    "best_validation_accuracy": 0.9399999976158142,
+    "best_train_loss": 0.13337312638759613,
+    "best_validation_loss": 0.159499391913414,
+    "best_train_accuracy": 0.9627360105514526,
+    "best_validation_accuracy": 0.949999988079071,
     "learning_rate_at_best_epoch": 0.0010000000474974513,
+    "best_checkpoint_validation_loss": 0.159499391913414,
+    "best_checkpoint_validation_accuracy": 0.949999988079071,
+    "final_model_source": "best_validation_loss_checkpoint",
+    "tensorflow_environment": {
+        "tensorflow_version": "2.20.0",
+        "gpu_available": false,
+        "gpu_count": 0,
+        "gpu_devices": [],
+        "cpu_count_detected": 1
+    },
     "checkpoint_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\checkpoints\\cnn_k3_best.keras",
     "final_model_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\8_save_models\\final_models\\cnn_k3_final.keras",
-    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\cnn_k3_history.csv"
+    "history_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_history\\cnn_k3_history.csv",
+    "summary_path": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\9_results\\training_summary\\cnn_k3_summary.json",
+    "test_set_used_during_training": false,
+    "k4_used": false
 }

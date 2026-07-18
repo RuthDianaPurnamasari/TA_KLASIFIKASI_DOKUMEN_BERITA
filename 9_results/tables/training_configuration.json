@@ -3,12 +3,19 @@
     "tensorflow_version": "2.20.0",
     "random_seed": 42,
     "num_classes": 4,
-    "epochs": 20,
+    "epochs_maximum": 20,
     "batch_size": 64,
     "learning_rate": 0.001,
     "optimizer": "Adam",
     "loss": "sparse_categorical_crossentropy",
     "training_metric": "accuracy",
+    "model_selection_metric": "val_loss",
+    "model_selection_mode": "min",
+    "test_set_used_during_training": false,
+    "k4_used": false,
+    "total_models": 2,
+    "total_scenarios": 5,
+    "total_experiments": 10,
     "shared_architecture": {
         "embedding_dim": 128,
         "dense_units": 128,
@@ -17,74 +24,157 @@
     },
     "cnn": {
         "num_filters": 128,
-        "kernel_size": 5
+        "kernel_size": 5,
+        "padding_handling": "Padding embedding dibuat nol dan full-padding convolution windows diabaikan dalam global max pooling."
     },
     "attention_bilstm": {
         "lstm_units_per_direction": 64,
+        "bilstm_output_units": 128,
         "attention_units": 64,
-        "recurrent_dropout_rate": 0.0
+        "recurrent_dropout_rate": 0.0,
+        "padding_handling": "Embedding mask_zero=True dan mask diteruskan ke BiLSTM serta attention."
     },
     "callbacks": {
+        "terminate_on_nan": true,
         "early_stopping": {
             "monitor": "val_loss",
-            "patience": 3,
+            "patience": 5,
             "min_delta": 0.0001,
+            "mode": "min",
             "restore_best_weights": true
         },
         "reduce_lr_on_plateau": {
             "monitor": "val_loss",
             "factor": 0.5,
             "patience": 2,
-            "minimum_learning_rate": 1e-06
+            "min_delta": 0.0001,
+            "minimum_learning_rate": 1e-06,
+            "mode": "min"
         },
         "model_checkpoint": {
             "monitor": "val_loss",
-            "save_best_only": true
+            "mode": "min",
+            "save_best_only": true,
+            "save_weights_only": false
+        },
+        "csv_logger": {
+            "append": false
+        }
+    },
+    "shared_vocabulary_validation": {
+        "kompas_shared": {
+            "scenarios": [
+                "K1",
+                "K2",
+                "K3"
+            ],
+            "vocabulary_sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2",
+            "vocabulary_size": 15492
+        },
+        "agnews_shared": {
+            "scenarios": [
+                "A1",
+                "A2"
+            ],
+            "vocabulary_sha256": "03cc192efa9cdd2c62b4b96ec72b757eb6a0ffeae7c03f3d2097f2786ecb87a0",
+            "vocabulary_size": 65049
         }
     },
     "scenarios": {
         "K1": {
             "dataset": "Kompas",
             "scenario_name": "Title",
+            "uses_yake": false,
+            "comparison_group": "kompas_text_representation",
+            "shared_vocabulary_group": "kompas_shared",
             "max_sequence_length": 20,
-            "actual_vocabulary_size": 10234,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k1"
+            "actual_vocabulary_size": 15492,
+            "expected_split_rows": {
+                "train": 7997,
+                "validation": 1000,
+                "test": 1000
+            },
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k1",
+            "vocabulary_sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2"
         },
         "K2": {
             "dataset": "Kompas",
             "scenario_name": "Title + Description",
+            "uses_yake": false,
+            "comparison_group": "kompas_k2_k3_yake_ablation",
+            "shared_vocabulary_group": "kompas_shared",
             "max_sequence_length": 60,
-            "actual_vocabulary_size": 15446,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2"
+            "actual_vocabulary_size": 15492,
+            "expected_split_rows": {
+                "train": 7997,
+                "validation": 1000,
+                "test": 1000
+            },
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k2",
+            "vocabulary_sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2"
         },
         "K3": {
             "dataset": "Kompas",
-            "scenario_name": "Title + Description + Keyword",
+            "scenario_name": "Title + Description + Keyword YAKE",
+            "uses_yake": true,
+            "comparison_group": "kompas_k2_k3_yake_ablation",
+            "shared_vocabulary_group": "kompas_shared",
             "max_sequence_length": 60,
-            "actual_vocabulary_size": 15447,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k3"
-        },
-        "K4": {
-            "dataset": "Kompas",
-            "scenario_name": "Title + Description + Keyword + Content",
-            "max_sequence_length": 525,
-            "actual_vocabulary_size": 49333,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k4"
+            "actual_vocabulary_size": 15492,
+            "expected_split_rows": {
+                "train": 7997,
+                "validation": 1000,
+                "test": 1000
+            },
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\kompas_k3",
+            "vocabulary_sha256": "7e80d27f98d0156ebffac49af62dddab567b247b9b31231524266d8f04dc70e2"
         },
         "A1": {
             "dataset": "AG News",
             "scenario_name": "Title",
-            "max_sequence_length": 20,
-            "actual_vocabulary_size": 33320,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a1"
+            "uses_yake": false,
+            "comparison_group": "agnews_a1_a2_text_ablation",
+            "shared_vocabulary_group": "agnews_shared",
+            "max_sequence_length": 60,
+            "actual_vocabulary_size": 65049,
+            "expected_split_rows": {
+                "train": 107835,
+                "validation": 11982,
+                "test": 7600
+            },
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a1",
+            "vocabulary_sha256": "03cc192efa9cdd2c62b4b96ec72b757eb6a0ffeae7c03f3d2097f2786ecb87a0"
         },
         "A2": {
             "dataset": "AG News",
             "scenario_name": "Title + Description",
+            "uses_yake": false,
+            "comparison_group": "agnews_a1_a2_text_ablation",
+            "shared_vocabulary_group": "agnews_shared",
             "max_sequence_length": 60,
-            "actual_vocabulary_size": 64868,
-            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a2"
+            "actual_vocabulary_size": 65049,
+            "expected_split_rows": {
+                "train": 107835,
+                "validation": 11982,
+                "test": 7600
+            },
+            "vectorized_directory": "C:\\TA_KLASIFIKASI_DOKUMEN_BERITA\\2_data\\vectorized\\agnews_a2",
+            "vocabulary_sha256": "03cc192efa9cdd2c62b4b96ec72b757eb6a0ffeae7c03f3d2097f2786ecb87a0"
         }
     },
-    "fair_comparison_note": "CNN dan Attention-BiLSTM menggunakan data split, label, batch size, epoch maksimum, learning rate, optimizer, loss, dan callback yang sama. Perbedaan utama berada pada arsitektur model."
+    "fair_comparison_controls": {
+        "same_document_assignment": true,
+        "same_label_mapping": true,
+        "same_optimizer": true,
+        "same_learning_rate": true,
+        "same_batch_size": true,
+        "same_epoch_maximum": true,
+        "same_callbacks": true,
+        "same_embedding_dimension": true,
+        "k2_k3_same_max_length": true,
+        "k2_k3_same_vocabulary": true,
+        "a1_a2_same_max_length": true,
+        "a1_a2_same_vocabulary": true
+    },
+    "fair_comparison_note": "CNN dan Attention-BiLSTM menggunakan data split, label mapping, batch size, epoch maksimum, learning rate, optimizer, loss, dimensi embedding, dan callback yang sama. Perbedaan utama berada pada mekanisme ekstraksi fitur arsitektur model."
 }

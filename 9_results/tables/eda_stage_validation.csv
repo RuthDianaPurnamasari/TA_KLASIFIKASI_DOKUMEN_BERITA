@@ -1,0 +1,20 @@
+﻿stage,file_name,file_path,exists,size_bytes,status
+3.1 Dataset Overview,dataset_overview.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\dataset_overview.csv,True,651,LULUS
+3.1 Dataset Overview,class_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\class_distribution.csv,True,426,LULUS
+3.1 Dataset Overview,data_cleaning_comparison.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\data_cleaning_comparison.csv,True,190,LULUS
+3.2 Text Statistics,text_statistics.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\text_statistics.csv,True,2307,LULUS
+3.2 Text Statistics,text_statistics_by_category.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\text_statistics_by_category.csv,True,3928,LULUS
+3.2 Text Statistics,sequence_length_coverage.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\sequence_length_coverage.csv,True,2956,LULUS
+3.3 Missing and Duplicate Analysis,missing_value_report.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\missing_value_report.csv,True,5215,LULUS
+3.3 Missing and Duplicate Analysis,duplicate_report.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\duplicate_report.csv,True,1184,LULUS
+3.3 Missing and Duplicate Analysis,cleaning_integrity_summary.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\cleaning_integrity_summary.csv,True,500,LULUS
+3.4 Word Frequency Analysis,word_frequency_overall.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\word_frequency_overall.csv,True,21841,LULUS
+3.4 Word Frequency Analysis,word_frequency_by_category.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\word_frequency_by_category.csv,True,44611,LULUS
+3.4 Word Frequency Analysis,word_frequency_summary.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\word_frequency_summary.csv,True,1150,LULUS
+3.5 Temporal Analysis,kompas_monthly_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_monthly_distribution.csv,True,766,LULUS
+3.5 Temporal Analysis,kompas_monthly_category_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_monthly_category_distribution.csv,True,481,LULUS
+3.5 Temporal Analysis,kompas_daily_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_daily_distribution.csv,True,4457,LULUS
+3.5 Temporal Analysis,kompas_hourly_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_hourly_distribution.csv,True,724,LULUS
+3.5 Temporal Analysis,kompas_weekday_distribution.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_weekday_distribution.csv,True,463,LULUS
+3.5 Temporal Analysis,kompas_temporal_summary.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\kompas_temporal_summary.csv,True,647,LULUS
+3.6 Word Cloud Analysis,wordcloud_summary.csv,C:\TA_KLASIFIKASI_DOKUMEN_BERITA\9_results\tables\wordcloud_summary.csv,True,1943,LULUS
